@@ -96,7 +96,59 @@ git push -u origin main
 git log --oneline --decorate --graph
 ```
 
-## 6. Antes de entregar
+## 6. Commits sugeridos para el Incremento 1 (Ae3)
+
+Como el repositorio ya existe y tiene el historial de Ae1, para Ae3 no
+vuelvas a hacer `git init`: solo agrega los cambios nuevos en bloques,
+igual que antes. Antes de empezar, ejecuta la línea base para dejar
+registrado que partiste del código de Ae1:
+
+```bash
+git pull origin main
+mvn clean compile
+```
+
+Luego, en este orden:
+
+```bash
+# 1) Ajuste de dominio para soportar el canal de notificacion preferido
+git add src/main/java/edu/uees/tutorias/domain/CanalNotificacion.java src/main/java/edu/uees/tutorias/domain/Usuario.java
+git commit -m "refactor: agregar canal de notificacion preferido a Usuario"
+
+# 2) Factory Method recuperado de Ae2 e integrado al dominio real
+git add src/main/java/edu/uees/tutorias/notification/NotificadorWhatsAppConsola.java src/main/java/edu/uees/tutorias/notification/factory/
+git commit -m "feat: integrar Factory Method de notificadores (recuperado de Ae2)"
+
+# 3) Strategy: politica de cancelacion
+git add src/main/java/edu/uees/tutorias/service/cancelacion/
+git commit -m "feat: aplicar strategy a la politica de cancelacion"
+
+# 4) Observer: reacciones a cambios de estado de una reserva
+git add src/main/java/edu/uees/tutorias/notification/observer/
+git commit -m "feat: integrar observer para reaccionar a cambios de estado de una reserva"
+
+# 5) ServicioReservas evoluciona para usar Strategy y Observer
+git add src/main/java/edu/uees/tutorias/service/ServicioReservas.java src/main/java/edu/uees/tutorias/app/Main.java
+git commit -m "refactor: mejorar responsabilidades de ServicioReservas con strategy y observer"
+
+# 6) Pruebas actualizadas y nuevas
+git add src/test/
+git commit -m "test: actualizar pruebas de ServicioReservas y agregar pruebas de factory method"
+
+# 7) UML actualizado del incremento
+git add docs/uml-incremento1.svg docs/uml-incremento1.png gen_uml_incremento1.py
+git commit -m "docs: actualizar UML del incremento 1"
+
+# 8) Documentacion
+git add README.md GUIA_GIT.md
+git commit -m "docs: actualizar README y decisiones de diseño del incremento 1"
+```
+
+```bash
+git push origin main
+```
+
+## 7. Antes de entregar
 
 - Abre la URL del repositorio en una ventana privada (sin sesión
   iniciada) y confirma que se puede ver sin permisos especiales, o

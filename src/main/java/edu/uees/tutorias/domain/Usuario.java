@@ -16,11 +16,17 @@ public abstract class Usuario {
     private final String id;
     private final String nombre;
     private final String correo;
+    private CanalNotificacion canalPreferido;
 
     protected Usuario(String id, String nombre, String correo) {
+        this(id, nombre, correo, CanalNotificacion.EMAIL);
+    }
+
+    protected Usuario(String id, String nombre, String correo, CanalNotificacion canalPreferido) {
         this.id = Objects.requireNonNull(id, "El id no puede ser nulo");
         this.nombre = validarNombre(nombre);
         this.correo = validarCorreo(correo);
+        this.canalPreferido = Objects.requireNonNull(canalPreferido, "El canal preferido no puede ser nulo");
     }
 
     private String validarNombre(String nombre) {
@@ -47,6 +53,20 @@ public abstract class Usuario {
 
     public String getCorreo() {
         return correo;
+    }
+
+    public CanalNotificacion getCanalPreferido() {
+        return canalPreferido;
+    }
+
+    /**
+     * Permite que un usuario cambie su canal de notificacion preferido
+     * (por ejemplo, desde EMAIL a WHATSAPP) sin afectar a ninguna otra
+     * clase: quien decide como se construye el Notificador adecuado es
+     * la fabrica de notificadores (Factory Method), no Usuario.
+     */
+    public void setCanalPreferido(CanalNotificacion canalPreferido) {
+        this.canalPreferido = Objects.requireNonNull(canalPreferido, "El canal preferido no puede ser nulo");
     }
 
     /**
