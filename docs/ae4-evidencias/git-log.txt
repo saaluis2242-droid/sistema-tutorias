@@ -1,0 +1,7 @@
+* b81c58d (HEAD -> main) docs: documentar resultado de la kata de refactorizacion (Ae4)
+* aa41d9e refactor: simplificar condicionales usando switch sobre el enum EstadoReserva (sin comparar Strings)
+* cf6e00c refactor: reemplazar numeros magicos (15.0, 0.1, 0.2, "UEES") por constantes con nombre
+* c492483 refactor: extraer calcularPrecio, construirEncabezado y construirLineaEstado de generar()
+* e926c8b refactor: renombrar Rpt a GeneradorReciboReserva y clarificar nombres (proc->generar, e/d/p/s/flag1)
+* e5b5dbc chore: registrar linea base de Ae4 (Rpt.proc genera recibo con 6 casos representativos)
+* a152735 chore: snapshot del proyecto tal como quedo tras Ae3 (Incremento 1)

@@ -21,15 +21,20 @@ negocio independiente de la tecnología de persistencia, de la regla de
 cancelación vigente y del canal de notificación, para que las tres
 puedan cambiar sin afectar las reglas del dominio.
 
-Este repositorio documenta la evolución del proyecto en tres entregas:
+Este repositorio documenta la evolución del proyecto en cuatro entregas:
 
 - **Ae1** (Semana 2): análisis de dominio, diseño OO, cohesión/acoplamiento,
   SOLID y UML inicial.
 - **Ae2** (Semana 3, `semana3-patrones`, repositorio aparte): práctica
   comparativa de **Factory Method** y **Builder** sobre el mismo dominio.
-- **Ae3 — Incremento 1** (Semana 4, esta entrega): identificación de
-  problemas reales de diseño e integración de **Strategy** y **Observer**,
-  recuperando de Ae2 el patrón que seguía justificado.
+- **Ae3 — Incremento 1** (Semana 4): identificación de problemas reales de
+  diseño e integración de **Strategy** y **Observer**, recuperando de Ae2
+  el patrón que seguía justificado.
+- **Ae4 — Kata de refactorización** (Semana 5, esta entrega): se agregó un
+  generador de recibos con Code Smells deliberados y se refactorizó en 4
+  pasos incrementales (Rename, Extract Method, Replace Magic Number,
+  Simplify Conditional) verificando en cada paso que el comportamiento
+  observable no cambia.
 
 ## Objetivos
 
@@ -45,6 +50,10 @@ Este repositorio documenta la evolución del proyecto en tres entregas:
   creacional (Factory Method) que seguía aportando valor.
 - Mantener el diagrama UML de clases coherente con la implementación en
   Java en cada incremento.
+- Aplicar un proceso seguro de refactorización (Rename, Extract Method,
+  Replace Magic Number, Simplify Conditional) sobre código con Code
+  Smells reales, verificando en cada paso que el comportamiento
+  observable se conserva.
 
 ## Tecnologías
 
@@ -101,15 +110,18 @@ src/
 │           │   │                          + NotificadorCreatorFactory)
 │           │   └── observer/            (Observer: ObservadorReserva + NotificadorObservador
 │           │                              + RegistroAuditoriaObservador)
+│           ├── reporte/                 (GeneradorReciboReserva, Ae4)
 │           └── app/                     (Main)
 └── test/
     └── java/
         └── edu/uees/tutorias/
             ├── ServicioReservasTest.java
-            └── notification/factory/NotificadorCreatorFactoryTest.java
+            ├── notification/factory/NotificadorCreatorFactoryTest.java
+            └── reporte/LineaBaseRecibos.java   (linea base y verificacion de Ae4)
 docs/
 ├── modelo-clases.svg / .png         (UML de Ae1)
-└── uml-incremento1.svg / .png       (UML actualizado de Ae3)
+├── uml-incremento1.svg / .png       (UML actualizado de Ae3)
+└── ae4-evidencias/                  (linea base antes/despues, git log — Ae4)
 pom.xml
 README.md
 GUIA_GIT.md
@@ -172,6 +184,96 @@ GUIA_GIT.md
   `RepositorioReservas`, `PoliticaCancelacion` y `ObservadorReserva`;
   nunca de una implementación concreta.
 
+## Kata de refactorización (Ae4)
+
+Para esta actividad se agregó una clase pequeña y autocontenida,
+`GeneradorReciboReserva` (paquete `reporte`), que genera el texto de un
+recibo a partir de una `Reserva` ya existente. Se escribió deliberadamente
+rápido y sin cuidar la estructura interna (como suele pasar con una
+utilidad que "solo iba a usarse una vez"), y fue el sujeto de la Kata.
+**No se le agregó ninguna funcionalidad nueva**: las 4 refactorizaciones
+solo cambian la estructura interna del código ya existente.
+
+### Código inicial (`Rpt`)
+
+```java
+public class Rpt {
+    public String proc(Reserva r) {
+        String s = "";
+        String e = r.getEstudiante().getNombre();
+        String d = r.getDocente().getNombre();
+        double p = 15.0;
+        String flag1 = r.getEstado().toString();
+        if (flag1.equals("REPROGRAMADA")) {
+            p = p - (p * 0.1);
+        } else {
+            if (flag1.equals("CANCELADA")) {
+                p = 0.0;
+            } else {
+                if (flag1.equals("COMPLETADA")) {
+                    if (r.getEstudiante().getCodigoEstudiantil() != null
+                            && r.getEstudiante().getCodigoEstudiantil().startsWith("UEES")) {
+                        p = p - (p * 0.2);
+                    }
+                }
+            }
+        }
+        // ... construcción del String de salida con la misma lógica anidada
+    }
+}
+```
+
+### Matriz de Code Smells
+
+| Código / ubicación | Smell | Evidencia | Impacto |
+|---|---|---|---|
+| Clase `Rpt`, método `proc` | Nombres poco significativos (Mysterious Name) | `Rpt`, `proc`, variables `e`, `d`, `p`, `s`, `flag1` | Nadie puede saber qué hace la clase ni sus variables sin leer todo el cuerpo del método. |
+| `proc` completo | Long Method / múltiples responsabilidades | Un único método de ~35 líneas calcula el precio, decide el descuento y arma todo el texto del recibo | Cualquier cambio en una de las tres cosas obliga a releer y tocar el método completo; dificulta las pruebas de cada regla por separado. |
+| Cálculo de precio y de línea de estado | Conditional Complexity (if/else anidados en 3 niveles) | Dos bloques `if/else` anidados que comparan el mismo `flag1` contra los mismos literales | Duplica la lógica de "qué estado es" en dos lugares distintos; agregar un estado nuevo obliga a tocar ambos bloques y es fácil olvidar uno. |
+| `15.0`, `0.1`, `0.2`, `"UEES"` dentro de `proc` | Magic Number / Magic String | Literales sueltos sin nombre que representan reglas de negocio (precio base, % de descuento, prefijo de fidelidad) | No queda registrado en el código *por qué* esos valores son esos; cambiarlos exige ubicar el literal exacto sin romper otro cálculo parecido. |
+| `flag1.equals("REPROGRAMADA")`, etc. | Primitive Obsession | Se compara el `String` que produce `estado.toString()` en vez de usar el enum `EstadoReserva` que ya existe en el dominio | El compilador no puede detectar un typo en el literal ni avisar si falta cubrir un estado nuevo del enum. |
+
+### Plan de refactorización
+
+| Prioridad | Problema | Refactorización | Justificación |
+|---|---|---|---|
+| 1 | Nombres no comunican intención | **Rename** (`Rpt`→`GeneradorReciboReserva`, `proc`→`generar`, variables) | Es el cambio de menor riesgo y hace legibles los pasos siguientes antes de tocar la lógica. |
+| 2 | Método con 3 responsabilidades mezcladas | **Extract Method** (`calcularPrecio`, `construirEncabezado`, `construirLineaEstado`) | Separa "qué calculo" de "qué texto arma", permitiendo razonar y (a futuro) probar cada regla por separado. |
+| 3 | Literales sin nombre | **Replace Magic Number/String with Constant** | Documenta en el propio código las reglas de negocio (precio base, descuentos, prefijo de fidelidad). |
+| 4 | Comparación de Strings duplicada en dos métodos | **Simplify Conditional** (switch sobre `EstadoReserva`) | Aprovecha un tipo que ya existía en el dominio; el compilador exige cubrir todos los valores del enum, evitando el olvido de un caso. |
+
+### Evidencia de verificación
+
+Se construyeron 6 casos representativos que cubren los 5 valores de
+`EstadoReserva` (incluyendo el caso "completada con código de fidelidad"
+y "completada sin código de fidelidad") en
+[`LineaBaseRecibos`](src/test/java/edu/uees/tutorias/reporte/LineaBaseRecibos.java).
+Después de **cada** una de las 4 refactorizaciones se recompiló y se
+volvió a ejecutar exactamente el mismo harness; los 6 casos dieron el
+mismo texto de recibo, carácter por carácter, en los cinco momentos
+(línea base + 4 refactorizaciones):
+
+```
+6 OK, 0 FAIL
+```
+
+La comparación (`diff`) entre la salida capturada ANTES de refactorizar
+([`docs/ae4-evidencias/linea-base-antes.txt`](docs/ae4-evidencias/linea-base-antes.txt))
+y la salida DESPUÉS de las 4 refactorizaciones
+([`docs/ae4-evidencias/linea-despues.txt`](docs/ae4-evidencias/linea-despues.txt))
+no reporta ninguna diferencia.
+
+### Comparación técnica antes/después
+
+| Dimensión | Antes | Después |
+|---|---|---|
+| Nombres | `Rpt`, `proc`, `e`, `d`, `p`, `s`, `flag1` | `GeneradorReciboReserva`, `generar`, `nombreEstudiante`, `precio`, `estado` |
+| Métodos / responsabilidades | 1 método hace todo | 4 métodos, cada uno con una sola razón para cambiar |
+| Condicionales / flujo | 2 cadenas de `if/else` anidadas en 3 niveles, comparando Strings | 2 `switch` exhaustivos sobre el enum `EstadoReserva`, sin anidamiento |
+| Constantes / reglas | `15.0`, `0.1`, `0.2`, `"UEES"` sueltos en el código | `PRECIO_BASE`, `DESCUENTO_REPROGRAMACION`, `DESCUENTO_FIDELIDAD`, `PREFIJO_CODIGO_FIDELIDAD` |
+| Comportamiento observable | — | Idéntico: los 6 casos producen el mismo texto de recibo antes y después |
+| Git | 1 commit de línea base | 4 commits de refactorización, uno por técnica aplicada |
+
 ## Pruebas
 
 Para ejecutar las pruebas:
@@ -186,26 +288,29 @@ tardía y rechazada según `PoliticaCancelacionConAntelacion`,
 reprogramación, y registro de un observador en tiempo de ejecución) y de
 `NotificadorCreatorFactory` (Factory Method).
 
-> Nota de verificación: en el entorno donde se preparó este incremento no
-> hubo acceso de red a Maven Central para descargar JUnit, por lo que la
-> lógica de cada prueba se verificó además con una réplica manual
-> (sin anotaciones JUnit) que confirmó los mismos 19 casos. Se recomienda
+> Nota de verificación: en el entorno donde se preparó este incremento y
+> esta kata no hubo acceso de red a Maven Central para descargar JUnit,
+> por lo que la lógica de cada prueba y de cada caso de la Kata de
+> refactorización se verificó además con réplicas manuales (sin
+> anotaciones JUnit) que confirmaron los mismos resultados. Se recomienda
 > ejecutar `mvn clean test` en un entorno con acceso normal a internet
 > para obtener el reporte oficial `BUILD SUCCESS`.
 
 ## Control de versiones
 
 El proyecto utiliza la rama `main`. El historial de commits documenta la
-evolución del análisis, el modelo y la implementación en cada incremento
-(ver [`GUIA_GIT.md`](GUIA_GIT.md) para el detalle de los commits
-sugeridos de Ae1 y Ae3).
+evolución del análisis, el modelo y la implementación en cada incremento,
+incluyendo el ciclo refactorización → compilar → ejecutar → comparar →
+commit de la Kata de Ae4 (ver [`GUIA_GIT.md`](GUIA_GIT.md) para el detalle
+de los commits sugeridos de cada entrega).
 
 ## Evidencias
 
 - Diagrama UML de clases (Ae1): [`docs/modelo-clases.svg`](docs/modelo-clases.svg) / [`docs/modelo-clases.png`](docs/modelo-clases.png).
 - Diagrama UML actualizado (Ae3 — Incremento 1): [`docs/uml-incremento1.svg`](docs/uml-incremento1.svg) / [`docs/uml-incremento1.png`](docs/uml-incremento1.png).
 - Evidencia de pruebas: salida de `mvn clean test` (BUILD SUCCESS) y verificación manual descrita arriba.
-- Documento de análisis y diseño entregado en Blackboard (PDF) de Ae1 y de Ae3, con las secciones de análisis, diseño OO, cohesión/acoplamiento, principios SOLID, patrones, UML y conclusiones.
+- Evidencia de la Kata de refactorización (Ae4): [`docs/ae4-evidencias/`](docs/ae4-evidencias/) (línea base antes/después y `git log`).
+- Documento de análisis y diseño entregado en Blackboard (PDF) de Ae1, Ae3 y Ae4, con las secciones de análisis, diseño OO, cohesión/acoplamiento, principios SOLID, patrones/refactorización, UML y conclusiones.
 
 ## Uso de inteligencia artificial
 
@@ -213,12 +318,16 @@ Durante el desarrollo de esta actividad utilicé herramientas de
 inteligencia artificial. Las utilicé para: apoyar la identificación de
 problemas de diseño a partir del código de Ae1, redactar una primera
 versión del código Java que integra Strategy y Observer, migrar e
-integrar el Factory Method de Ae2 al dominio real, y generar el diagrama
-UML actualizado a partir de las decisiones de diseño que definí.
-Verifiqué el comportamiento (compilación y verificación de la lógica de
-cada prueba) y puedo explicar y justificar el código y las decisiones de
-diseño presentadas, incluyendo por qué se descartó Builder para este
-incremento.
+integrar el Factory Method de Ae2 al dominio real, generar el diagrama
+UML actualizado a partir de las decisiones de diseño que definí, y en
+Ae4, para ayudarme a construir un ejemplo representativo de Code Smells
+sobre el cual practicar el proceso de refactorización y a redactar la
+matriz de smells y la comparación antes/después. Verifiqué el
+comportamiento (compilación, ejecución y verificación de la lógica de
+cada prueba y de cada refactorización) y puedo explicar y justificar el
+código y las decisiones presentadas en cada entrega, incluyendo por qué
+se descartó Builder en Ae3 y por qué se priorizó cada refactorización de
+Ae4 en el orden elegido.
 
 ## Autor
 

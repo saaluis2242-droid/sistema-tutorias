@@ -148,7 +148,58 @@ git commit -m "docs: actualizar README y decisiones de diseño del incremento 1"
 git push origin main
 ```
 
-## 7. Antes de entregar
+## 7. Commits del ciclo de refactorización para la Kata (Ae4)
+
+Igual que en el Incremento 1, no vuelvas a hacer `git init`. La Kata de
+Ae4 sigue el ciclo obligatorio: **refactorización → compilar → ejecutar →
+comparar → commit**, uno por cada técnica aplicada. Antes de empezar:
+
+```bash
+git pull origin main
+mvn clean compile
+```
+
+Luego, en este orden (cada commit corresponde a un paso ya compilado y
+verificado con `LineaBaseRecibos`, no a un cambio sin probar):
+
+```bash
+# 0) Linea base: el codigo con Code Smells, tal como se escribio la primera vez
+git add src/main/java/edu/uees/tutorias/reporte/Rpt.java src/test/java/edu/uees/tutorias/reporte/LineaBaseRecibos.java docs/ae4-evidencias/linea-base-antes.txt
+git commit -m "chore: registrar linea base de Ae4 (Rpt.proc genera recibo con 6 casos representativos)"
+
+# 1) Refactorizacion 1: Rename
+git add src/main/java/edu/uees/tutorias/reporte/GeneradorReciboReserva.java src/test/java/edu/uees/tutorias/reporte/LineaBaseRecibos.java
+git rm src/main/java/edu/uees/tutorias/reporte/Rpt.java
+git commit -m "refactor: renombrar Rpt a GeneradorReciboReserva y clarificar nombres (proc->generar, e/d/p/s/flag1)"
+
+# 2) Refactorizacion 2: Extract Method
+git add src/main/java/edu/uees/tutorias/reporte/GeneradorReciboReserva.java
+git commit -m "refactor: extraer calcularPrecio, construirEncabezado y construirLineaEstado de generar()"
+
+# 3) Refactorizacion 3: Replace Magic Number with Constant
+git add src/main/java/edu/uees/tutorias/reporte/GeneradorReciboReserva.java
+git commit -m "refactor: reemplazar numeros magicos (15.0, 0.1, 0.2, \"UEES\") por constantes con nombre"
+
+# 4) Refactorizacion 4: Simplify Conditional
+git add src/main/java/edu/uees/tutorias/reporte/GeneradorReciboReserva.java docs/ae4-evidencias/linea-despues.txt
+git commit -m "refactor: simplificar condicionales usando switch sobre el enum EstadoReserva (sin comparar Strings)"
+
+# 5) Documentacion del resultado
+git add README.md GUIA_GIT.md docs/ae4-evidencias/
+git commit -m "docs: documentar resultado de la kata de refactorizacion (Ae4)"
+```
+
+```bash
+git push origin main
+```
+
+Verifica el historial antes de subir:
+
+```bash
+git log --oneline --decorate --graph
+```
+
+## 8. Antes de entregar
 
 - Abre la URL del repositorio en una ventana privada (sin sesión
   iniciada) y confirma que se puede ver sin permisos especiales, o
