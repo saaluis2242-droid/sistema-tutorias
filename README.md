@@ -457,6 +457,7 @@ y el estado de la suite tras el cambio.
   - `diff-src-main-ae4-vs-ae5.patch` y `diff-resumen-ae4-vs-ae5.txt`: el cambio completo de `src/main`.
   - `git-log-ae5.txt` y `git-log-ae5-detallado.txt`: el historial con los mensajes completos.
   - `parches/`: los 7 commits como parches aplicables con `git am`.
+- Reporte técnico de Ae5: [`docs/ae5-reporte-tecnico.docx`](docs/ae5-reporte-tecnico.docx) / [`docs/ae5-reporte-tecnico.pdf`](docs/ae5-reporte-tecnico.pdf).
 - Documento de análisis y diseño entregado en Blackboard (PDF) de Ae1, Ae3 y Ae4, con las secciones de análisis, diseño OO, cohesión/acoplamiento, principios SOLID, patrones/refactorización, UML y conclusiones.
 
 ## Uso de inteligencia artificial
