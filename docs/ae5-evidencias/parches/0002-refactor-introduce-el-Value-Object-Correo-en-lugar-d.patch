@@ -1,0 +1,836 @@
+From d25dffcead2ffc801304f4ef2c8128e7dc39cc72 Mon Sep 17 00:00:00 2001
+From: Luis Saa <saaluis2242@gmail.com>
+Date: Mon, 21 Sep 2026 22:06:28 -0500
+Subject: [PATCH 2/7] refactor: introduce el Value Object Correo en lugar de un
+ String validado
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Problema de diseño: Usuario guardaba el correo como String y validaba su
+forma en un metodo privado (Primitive Obsession). El tipo del atributo no
+comunicaba ninguna regla, la validacion vivia lejos del dato y cualquier
+clase que recibiera un "String correo" no podia saber si ya estaba
+validado; la regla habria terminado duplicada en cada punto de entrada.
+
+Cambio: se crea el record Correo, que valida su propio valor al
+construirse (no puede existir un Correo invalido) y se convierte en el
+tipo del atributo de Usuario. getCorreo() ahora devuelve Correo; su
+toString() sigue entregando el texto original, por lo que los
+notificadores que lo interpolan imprimen exactamente lo mismo.
+
+Pruebas que protegen el cambio: UsuarioTest (correo nulo y sin arroba
+rechazados con el mismo mensaje, correo leido de vuelta como el mismo
+texto) y NotificadorCreatorFactoryTest (el notificador de email sigue
+componiendo su linea). Se agrega CorreoTest con el contrato del nuevo
+tipo, ahora probable de forma aislada.
+
+Suite: 58 pruebas, 58 correctas.
+---
+ .../01-suite-verde-value-object-correo.txt    |  82 +++++++++++++
+ docs/ae5-evidencias/codigo-antes/Docente.java |  50 ++++++++
+ .../codigo-antes/GeneradorReciboReserva.java  |  70 +++++++++++
+ docs/ae5-evidencias/codigo-antes/Horario.java |  74 ++++++++++++
+ docs/ae5-evidencias/codigo-antes/Reserva.java |  91 ++++++++++++++
+ .../codigo-antes/ServicioReservas.java        | 114 ++++++++++++++++++
+ docs/ae5-evidencias/codigo-antes/Usuario.java |  91 ++++++++++++++
+ .../java/edu/uees/tutorias/domain/Correo.java |  50 ++++++++
+ .../edu/uees/tutorias/domain/Usuario.java     |  21 ++--
+ .../edu/uees/tutorias/domain/CorreoTest.java  |  49 ++++++++
+ 10 files changed, 682 insertions(+), 10 deletions(-)
+ create mode 100644 docs/ae5-evidencias/01-suite-verde-value-object-correo.txt
+ create mode 100644 docs/ae5-evidencias/codigo-antes/Docente.java
+ create mode 100644 docs/ae5-evidencias/codigo-antes/GeneradorReciboReserva.java
+ create mode 100644 docs/ae5-evidencias/codigo-antes/Horario.java
+ create mode 100644 docs/ae5-evidencias/codigo-antes/Reserva.java
+ create mode 100644 docs/ae5-evidencias/codigo-antes/ServicioReservas.java
+ create mode 100644 docs/ae5-evidencias/codigo-antes/Usuario.java
+ create mode 100644 src/main/java/edu/uees/tutorias/domain/Correo.java
+ create mode 100644 src/test/java/edu/uees/tutorias/domain/CorreoTest.java
+
+diff --git a/docs/ae5-evidencias/01-suite-verde-value-object-correo.txt b/docs/ae5-evidencias/01-suite-verde-value-object-correo.txt
+new file mode 100644
+index 0000000..be4aa3e
+--- /dev/null
++++ b/docs/ae5-evidencias/01-suite-verde-value-object-correo.txt
+@@ -0,0 +1,82 @@
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++=== ServicioReservasCaracterizacionTest ===
++  [OK]   cadaCambioDeEstadoPublicaSuEventoEnOrden
++  [OK]   laObservacionDeLaPoliticaSeAnexaAlMotivoEntreCorchetes
++  [OK]   laReservaSolicitadaQuedaPersistidaYSePuedeRecuperarPorId
++  [OK]   operarSobreUnaReservaInexistenteFallaConSuMensaje
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaConSuMensajeYNoAlteraLaReserva
++  [OK]   sinObservacionLaNotaEsExactamenteElMotivo
++  [OK]   solicitarUnHorarioOcupadoFallaConSuMensajeYSinPublicarEventos
++  [OK]   unaCancelacionRechazadaPorLaPoliticaNoCambiaElEstadoNiPublicaEvento
++
++=== ServicioReservasTest ===
++  [OK]   agregarObservadorEnTiempoDeEjecucionRecibeEventosPosteriores
++  [OK]   cancelarReservaConPoliticaEstandarLiberaElHorarioSinObservaciones
++  [OK]   cancelarReservaCuyoHorarioYaPasoEsRechazadaPorLaPolitica
++  [OK]   cancelarReservaTardiaQuedaMarcadaPorLaPoliticaConAntelacion
++  [OK]   confirmarReservaCambiaSuEstadoYPublicaEvento
++  [OK]   noSePuedeReservarUnHorarioYaOcupado
++  [OK]   reprogramarReservaCambiaElHorarioAsociadoYPublicaEvento
++  [OK]   solicitarReservaDejaElHorarioOcupadoYPublicaEvento
++
++=== CorreoTest ===
++  [OK]   dosCorreosConElMismoValorSonIguales
++  [OK]   elCorreoSabeSeparaseEnUsuarioYDominio
++  [OK]   unCorreoNoPuedeExistirInvalido
++  [OK]   unCorreoValidoConservaSuTexto
++
++=== DocenteTest ===
++  [OK]   dosHorariosConsecutivosNoSeConsideranSolapados
++  [OK]   laAgendaExpuestaEsDeSoloLectura
++  [OK]   losHorariosSePublicanYSeConservanEnOrden
++  [OK]   unDocenteNuevoNoTieneHorariosPublicados
++  [OK]   unHorarioQueSeSolapaConOtroYaPublicadoEsRechazado
++
++=== HorarioTest ===
++  [OK]   dosHorariosConElMismoIntervaloSonIguales
++  [OK]   dosHorariosQueComparteMinutosSeSolapan
++  [OK]   elTextoDeUnHorarioEsElQueUsaElRecibo
++  [OK]   ocuparDosVecesElMismoHorarioEsUnError
++  [OK]   ocuparUnHorarioLoDejaNoDisponibleYLiberarloLoDevuelveADisponible
++  [OK]   unHorarioCuyoFinNoEsPosteriorAlInicioEsRechazado
++  [OK]   unHorarioNaceDisponible
++
++=== ReservaTest ===
++  [OK]   cancelarLiberaElHorarioYGuardaElMotivo
++  [OK]   cancelarSinMotivoDejaLasNotasVacias
++  [OK]   reprogramarLiberaElHorarioAnteriorYOcupaElNuevo
++  [OK]   soloUnaReservaConfirmadaPuedeCompletarse
++  [OK]   soloUnaReservaSolicitadaPuedeConfirmarse
++  [OK]   unaReservaCompletadaNoPuedeCancelarse
++  [OK]   unaReservaExigeEstudianteDocenteYHorario
++  [OK]   unaReservaNaceSolicitadaConIdYSinNotas
++  [OK]   unaReservaYaCanceladaNoPuedeCancelarseNiReprogramarse
++
++=== UsuarioTest ===
++  [OK]   cadaTipoDeUsuarioDescribeSuPropioRol
++  [OK]   dosUsuariosConElMismoIdSonElMismoUsuario
++  [OK]   elCanalPreferidoPorDefectoEsEmailYPuedeCambiarse
++  [OK]   elCodigoEstudiantilEsObligatorio
++  [OK]   elCorreoSeLeeDeVueltaComoElMismoTexto
++  [OK]   laEspecialidadDelDocenteEsObligatoria
++  [OK]   unCorreoNuloEsRechazado
++  [OK]   unCorreoSinArrobaEsRechazadoConElMismoMensajeDeSiempre
++  [OK]   unNombreEnBlancoEsRechazado
++
++=== NotificadorCreatorFactoryTest ===
++  [OK]   devuelveElCreadorCorrectoParaCadaCanal
++[EMAIL] Para: Luis Perez <luis@uees.edu.ec> | Mensaje: mensaje de prueba
++  [OK]   elCreadorObtenidoPuedeNotificarSinConocerLaClaseConcreta
++
++=== GeneradorReciboReservaTest ===
++  [OK]   reciboDeUnaReservaCanceladaNoCobraYMuestraElMotivo
++  [OK]   reciboDeUnaReservaCompletadaConCodigoUeesAplicaDescuentoDeFidelidad
++  [OK]   reciboDeUnaReservaCompletadaSinCodigoUeesNoAplicaDescuento
++  [OK]   reciboDeUnaReservaConfirmadaCobraElPrecioBase
++  [OK]   reciboDeUnaReservaReprogramadaAplicaDiezPorCientoDeDescuento
++  [OK]   reciboDeUnaReservaSolicitadaCobraElPrecioBase
++
++-----------------------------------------------
++Pruebas ejecutadas: 58, correctas: 58, fallidas: 0
++RESULTADO: SUITE VERDE
+diff --git a/docs/ae5-evidencias/codigo-antes/Docente.java b/docs/ae5-evidencias/codigo-antes/Docente.java
+new file mode 100644
+index 0000000..f9e7ce6
+--- /dev/null
++++ b/docs/ae5-evidencias/codigo-antes/Docente.java
+@@ -0,0 +1,50 @@
++package edu.uees.tutorias.domain;
++
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.List;
++
++/**
++ * Docente que publica y administra su propia disponibilidad de horarios.
++ *
++ * La lista de horarios es una composicion: los Horario de un Docente
++ * viven y mueren con el (si se elimina el Docente, sus horarios dejan
++ * de tener sentido). Por eso la coleccion se expone solo de lectura y
++ * las reglas de publicacion (no solapar horarios) las protege esta
++ * misma clase.
++ */
++public class Docente extends Usuario {
++
++    private final String especialidad;
++    private final List<Horario> horarios = new ArrayList<>();
++
++    public Docente(String id, String nombre, String correo, String especialidad) {
++        super(id, nombre, correo);
++        if (especialidad == null || especialidad.isBlank()) {
++            throw new IllegalArgumentException("La especialidad es obligatoria");
++        }
++        this.especialidad = especialidad;
++    }
++
++    public String getEspecialidad() {
++        return especialidad;
++    }
++
++    public List<Horario> getHorarios() {
++        return Collections.unmodifiableList(horarios);
++    }
++
++    /** Publica un nuevo horario, evitando que se solape con uno existente. */
++    public void publicarHorario(Horario horario) {
++        boolean seSolapa = horarios.stream().anyMatch(h -> h.seSolapaCon(horario));
++        if (seSolapa) {
++            throw new IllegalStateException("El horario se solapa con uno ya publicado");
++        }
++        horarios.add(horario);
++    }
++
++    @Override
++    public String describirRol() {
++        return "Docente";
++    }
++}
+diff --git a/docs/ae5-evidencias/codigo-antes/GeneradorReciboReserva.java b/docs/ae5-evidencias/codigo-antes/GeneradorReciboReserva.java
+new file mode 100644
+index 0000000..f3a796d
+--- /dev/null
++++ b/docs/ae5-evidencias/codigo-antes/GeneradorReciboReserva.java
+@@ -0,0 +1,70 @@
++package edu.uees.tutorias.reporte;
++
++import edu.uees.tutorias.domain.EstadoReserva;
++import edu.uees.tutorias.domain.Reserva;
++
++/**
++ * Genera el texto del recibo de una tutoria.
++ *
++ * Refactorizacion 4 (Simplify Conditional): {@code calcularPrecio} y
++ * {@code construirLineaEstado} comparaban {@code reserva.getEstado().toString()}
++ * contra literales de texto ("REPROGRAMADA", "CANCELADA", "COMPLETADA")
++ * con if/else anidados en tres niveles. Eso duplicaba, con texto suelto,
++ * una informacion que ya existe como tipo en el dominio: el enum
++ * {@link EstadoReserva}. Se reemplazaron ambas cadenas de if/else por un
++ * {@code switch} sobre el enum (sin comparar Strings) y se aplano el
++ * anidamiento. El resultado de cada caso es exactamente el mismo que
++ * antes.
++ */
++public class GeneradorReciboReserva {
++
++    private static final double PRECIO_BASE = 15.0;
++    private static final double DESCUENTO_REPROGRAMACION = 0.1;
++    private static final double DESCUENTO_FIDELIDAD = 0.2;
++    private static final String PREFIJO_CODIGO_FIDELIDAD = "UEES";
++
++    public String generar(Reserva reserva) {
++        EstadoReserva estado = reserva.getEstado();
++        double precio = calcularPrecio(reserva, estado);
++
++        String recibo = "";
++        recibo = recibo + construirEncabezado(reserva);
++        recibo = recibo + construirLineaEstado(reserva, estado);
++        recibo = recibo + "Total a pagar: $" + precio + "\n";
++        return recibo;
++    }
++
++    private double calcularPrecio(Reserva reserva, EstadoReserva estado) {
++        return switch (estado) {
++            case REPROGRAMADA -> PRECIO_BASE - (PRECIO_BASE * DESCUENTO_REPROGRAMACION);
++            case CANCELADA -> 0.0;
++            case COMPLETADA -> tieneCodigoFidelidad(reserva)
++                    ? PRECIO_BASE - (PRECIO_BASE * DESCUENTO_FIDELIDAD)
++                    : PRECIO_BASE;
++            case SOLICITADA, CONFIRMADA -> PRECIO_BASE;
++        };
++    }
++
++    private boolean tieneCodigoFidelidad(Reserva reserva) {
++        String codigo = reserva.getEstudiante().getCodigoEstudiantil();
++        return codigo != null && codigo.startsWith(PREFIJO_CODIGO_FIDELIDAD);
++    }
++
++    private String construirEncabezado(Reserva reserva) {
++        String encabezado = "";
++        encabezado = encabezado + "Recibo de tutoria\n";
++        encabezado = encabezado + "Estudiante: " + reserva.getEstudiante().getNombre() + "\n";
++        encabezado = encabezado + "Docente: " + reserva.getDocente().getNombre() + "\n";
++        encabezado = encabezado + "Horario: " + reserva.getHorario() + "\n";
++        return encabezado;
++    }
++
++    private String construirLineaEstado(Reserva reserva, EstadoReserva estado) {
++        return switch (estado) {
++            case CANCELADA -> "Estado: cancelada. Motivo: " + reserva.getNotas() + "\n";
++            case REPROGRAMADA -> "Estado: reprogramada (aplica 10% de descuento)\n";
++            case COMPLETADA -> "Estado: completada\n";
++            case SOLICITADA, CONFIRMADA -> "Estado: " + estado + "\n";
++        };
++    }
++}
+diff --git a/docs/ae5-evidencias/codigo-antes/Horario.java b/docs/ae5-evidencias/codigo-antes/Horario.java
+new file mode 100644
+index 0000000..6de35ed
+--- /dev/null
++++ b/docs/ae5-evidencias/codigo-antes/Horario.java
+@@ -0,0 +1,74 @@
++package edu.uees.tutorias.domain;
++
++import java.time.LocalDateTime;
++import java.util.Objects;
++
++/**
++ * Bloque de tiempo que un docente publica como disponible para tutorias.
++ *
++ * Es un objeto de valor: encapsula sus propias reglas (que el fin sea
++ * posterior al inicio, y el estado de disponibilidad) para que ninguna
++ * otra clase manipule directamente sus atributos. Docente lo contiene
++ * por composicion: un Horario no tiene sentido ni existe fuera de la
++ * agenda de un Docente especifico.
++ */
++public class Horario {
++
++    private final LocalDateTime inicio;
++    private final LocalDateTime fin;
++    private boolean disponible;
++
++    public Horario(LocalDateTime inicio, LocalDateTime fin) {
++        if (inicio == null || fin == null || !fin.isAfter(inicio)) {
++            throw new IllegalArgumentException("El horario debe tener un fin posterior al inicio");
++        }
++        this.inicio = inicio;
++        this.fin = fin;
++        this.disponible = true;
++    }
++
++    public LocalDateTime getInicio() {
++        return inicio;
++    }
++
++    public LocalDateTime getFin() {
++        return fin;
++    }
++
++    public boolean isDisponible() {
++        return disponible;
++    }
++
++    /** Solo el propio Horario decide si puede marcarse como ocupado. */
++    public void marcarOcupado() {
++        if (!disponible) {
++            throw new IllegalStateException("El horario ya se encuentra ocupado");
++        }
++        this.disponible = false;
++    }
++
++    public void liberar() {
++        this.disponible = true;
++    }
++
++    public boolean seSolapaCon(Horario otro) {
++        return this.inicio.isBefore(otro.fin) && otro.inicio.isBefore(this.fin);
++    }
++
++    @Override
++    public boolean equals(Object o) {
++        if (this == o) return true;
++        if (!(o instanceof Horario horario)) return false;
++        return inicio.equals(horario.inicio) && fin.equals(horario.fin);
++    }
++
++    @Override
++    public int hashCode() {
++        return Objects.hash(inicio, fin);
++    }
++
++    @Override
++    public String toString() {
++        return inicio + " - " + fin;
++    }
++}
+diff --git a/docs/ae5-evidencias/codigo-antes/Reserva.java b/docs/ae5-evidencias/codigo-antes/Reserva.java
+new file mode 100644
+index 0000000..6270c95
+--- /dev/null
++++ b/docs/ae5-evidencias/codigo-antes/Reserva.java
+@@ -0,0 +1,91 @@
++package edu.uees.tutorias.domain;
++
++import java.util.Objects;
++import java.util.UUID;
++
++/**
++ * Reserva de tutoria entre un Estudiante y un Docente para un Horario
++ * concreto.
++ *
++ * Es el objeto que registra el encuentro y protege las transiciones de
++ * su propio estado (confirmar, cancelar, reprogramar): ninguna otra
++ * clase del sistema cambia el estado de una Reserva directamente, solo
++ * a traves de estos metodos. Esto mantiene la regla de negocio en un
++ * unico lugar (alta cohesion) y evita que ServicioReservas termine
++ * conociendo los detalles internos de que transiciones son validas.
++ */
++public class Reserva {
++
++    private final String id;
++    private final Estudiante estudiante;
++    private final Docente docente;
++    private Horario horario;
++    private EstadoReserva estado;
++    private String notas;
++
++    public Reserva(Estudiante estudiante, Docente docente, Horario horario) {
++        this.id = UUID.randomUUID().toString();
++        this.estudiante = Objects.requireNonNull(estudiante, "El estudiante es obligatorio");
++        this.docente = Objects.requireNonNull(docente, "El docente es obligatorio");
++        this.horario = Objects.requireNonNull(horario, "El horario es obligatorio");
++        this.estado = EstadoReserva.SOLICITADA;
++        this.notas = "";
++    }
++
++    public void confirmar() {
++        if (estado != EstadoReserva.SOLICITADA) {
++            throw new IllegalStateException("Solo una reserva solicitada puede confirmarse");
++        }
++        estado = EstadoReserva.CONFIRMADA;
++    }
++
++    public void cancelar(String motivo) {
++        if (estado == EstadoReserva.CANCELADA || estado == EstadoReserva.COMPLETADA) {
++            throw new IllegalStateException("La reserva ya no puede cancelarse en su estado actual");
++        }
++        horario.liberar();
++        estado = EstadoReserva.CANCELADA;
++        this.notas = motivo == null ? "" : motivo;
++    }
++
++    public void reprogramar(Horario nuevoHorario) {
++        if (estado == EstadoReserva.CANCELADA || estado == EstadoReserva.COMPLETADA) {
++            throw new IllegalStateException("La reserva ya no puede reprogramarse en su estado actual");
++        }
++        horario.liberar();
++        this.horario = Objects.requireNonNull(nuevoHorario, "El nuevo horario es obligatorio");
++        nuevoHorario.marcarOcupado();
++        this.estado = EstadoReserva.REPROGRAMADA;
++    }
++
++    public void completar() {
++        if (estado != EstadoReserva.CONFIRMADA) {
++            throw new IllegalStateException("Solo una reserva confirmada puede completarse");
++        }
++        estado = EstadoReserva.COMPLETADA;
++    }
++
++    public String getId() {
++        return id;
++    }
++
++    public Estudiante getEstudiante() {
++        return estudiante;
++    }
++
++    public Docente getDocente() {
++        return docente;
++    }
++
++    public Horario getHorario() {
++        return horario;
++    }
++
++    public EstadoReserva getEstado() {
++        return estado;
++    }
++
++    public String getNotas() {
++        return notas;
++    }
++}
+diff --git a/docs/ae5-evidencias/codigo-antes/ServicioReservas.java b/docs/ae5-evidencias/codigo-antes/ServicioReservas.java
+new file mode 100644
+index 0000000..c0f8315
+--- /dev/null
++++ b/docs/ae5-evidencias/codigo-antes/ServicioReservas.java
+@@ -0,0 +1,114 @@
++package edu.uees.tutorias.service;
++
++import edu.uees.tutorias.domain.Docente;
++import edu.uees.tutorias.domain.Estudiante;
++import edu.uees.tutorias.domain.Horario;
++import edu.uees.tutorias.domain.Reserva;
++import edu.uees.tutorias.notification.observer.ObservadorReserva;
++import edu.uees.tutorias.repository.RepositorioReservas;
++import edu.uees.tutorias.service.cancelacion.PoliticaCancelacion;
++import edu.uees.tutorias.service.cancelacion.ResultadoCancelacion;
++
++import java.time.LocalDateTime;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Objects;
++
++/**
++ * Orquesta el caso de uso completo de una reserva de tutoria: valida
++ * disponibilidad, delega la persistencia, aplica la politica de
++ * cancelacion vigente y publica cada cambio de estado a sus
++ * observadores.
++ *
++ * <p>Esta clase concentra SOLO la logica de aplicacion (el "cuando" y
++ * el "que"); no sabe como se guarda una reserva (RepositorioReservas),
++ * que regla de cancelacion aplica en cada caso (PoliticaCancelacion) ni
++ * quien reacciona a un cambio de estado ni como (ObservadorReserva).
++ * Es el ejemplo mas claro de SRP, DIP, Strategy y Observer en el
++ * diseño: tiene una unica razon para cambiar (que cambien las reglas
++ * del proceso de reserva en si) y depende solo de abstracciones.</p>
++ *
++ * <p>Evolucion respecto de Ae1: en el incremento anterior, esta clase
++ * dependia de un unico {@code Notificador} inyectado por constructor.
++ * Al identificar que (a) las reglas de cancelacion necesitaban variar y
++ * (b) mas de un componente debia reaccionar a un mismo cambio de
++ * estado, se introdujeron Strategy (PoliticaCancelacion) y Observer
++ * (ObservadorReserva) para resolver ambos problemas sin acoplar esta
++ * clase a una regla fija ni a un unico canal de notificacion.</p>
++ */
++public class ServicioReservas {
++
++    private final RepositorioReservas repositorio;
++    private final PoliticaCancelacion politicaCancelacion;
++    private final List<ObservadorReserva> observadores;
++
++    public ServicioReservas(RepositorioReservas repositorio,
++                             PoliticaCancelacion politicaCancelacion,
++                             List<ObservadorReserva> observadores) {
++        this.repositorio = Objects.requireNonNull(repositorio);
++        this.politicaCancelacion = Objects.requireNonNull(politicaCancelacion);
++        this.observadores = new ArrayList<>(Objects.requireNonNull(observadores));
++    }
++
++    /** Permite registrar un observador adicional en tiempo de ejecucion (Open/Closed). */
++    public void agregarObservador(ObservadorReserva observador) {
++        observadores.add(Objects.requireNonNull(observador));
++    }
++
++    public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
++        if (!horario.isDisponible()) {
++            throw new IllegalStateException("El horario seleccionado ya no esta disponible");
++        }
++        horario.marcarOcupado();
++        Reserva reserva = new Reserva(estudiante, docente, horario);
++        repositorio.guardar(reserva);
++
++        publicar(reserva, "SOLICITADA");
++        return reserva;
++    }
++
++    public void confirmarReserva(String reservaId) {
++        Reserva reserva = obtenerReserva(reservaId);
++        reserva.confirmar();
++        repositorio.guardar(reserva);
++        publicar(reserva, "CONFIRMADA");
++    }
++
++    public void cancelarReserva(String reservaId, String motivo) {
++        Reserva reserva = obtenerReserva(reservaId);
++
++        ResultadoCancelacion resultado = politicaCancelacion.evaluar(reserva, LocalDateTime.now());
++        if (!resultado.isPermitida()) {
++            throw new IllegalStateException(resultado.getObservacion());
++        }
++
++        String notaFinal = resultado.getObservacion().isEmpty()
++                ? motivo
++                : motivo + " [" + resultado.getObservacion() + "]";
++
++        reserva.cancelar(notaFinal);
++        repositorio.guardar(reserva);
++        publicar(reserva, "CANCELADA");
++    }
++
++    public void reprogramarReserva(String reservaId, Horario nuevoHorario) {
++        Reserva reserva = obtenerReserva(reservaId);
++        if (!nuevoHorario.isDisponible()) {
++            throw new IllegalStateException("El nuevo horario no esta disponible");
++        }
++        reserva.reprogramar(nuevoHorario);
++        repositorio.guardar(reserva);
++        publicar(reserva, "REPROGRAMADA");
++    }
++
++    private void publicar(Reserva reserva, String evento) {
++        for (ObservadorReserva observador : observadores) {
++            observador.onCambioEstado(reserva, evento);
++        }
++    }
++
++    private Reserva obtenerReserva(String reservaId) {
++        return repositorio.buscarPorId(reservaId)
++                .orElseThrow(() -> new IllegalArgumentException("No existe una reserva con id " + reservaId));
++    }
++}
+diff --git a/docs/ae5-evidencias/codigo-antes/Usuario.java b/docs/ae5-evidencias/codigo-antes/Usuario.java
+new file mode 100644
+index 0000000..f45c769
+--- /dev/null
++++ b/docs/ae5-evidencias/codigo-antes/Usuario.java
+@@ -0,0 +1,91 @@
++package edu.uees.tutorias.domain;
++
++import java.util.Objects;
++
++/**
++ * Clase base abstracta para los usuarios del sistema.
++ *
++ * Concentra la informacion y las reglas comunes a cualquier persona que
++ * participa en el sistema (identidad, nombre y correo). Estudiante y
++ * Docente heredan de esta clase porque ambos SON usuarios y comparten
++ * este mismo conjunto de atributos y reglas de validacion; no se trata
++ * de una herencia usada solo para reutilizar codigo.
++ */
++public abstract class Usuario {
++
++    private final String id;
++    private final String nombre;
++    private final String correo;
++    private CanalNotificacion canalPreferido;
++
++    protected Usuario(String id, String nombre, String correo) {
++        this(id, nombre, correo, CanalNotificacion.EMAIL);
++    }
++
++    protected Usuario(String id, String nombre, String correo, CanalNotificacion canalPreferido) {
++        this.id = Objects.requireNonNull(id, "El id no puede ser nulo");
++        this.nombre = validarNombre(nombre);
++        this.correo = validarCorreo(correo);
++        this.canalPreferido = Objects.requireNonNull(canalPreferido, "El canal preferido no puede ser nulo");
++    }
++
++    private String validarNombre(String nombre) {
++        if (nombre == null || nombre.isBlank()) {
++            throw new IllegalArgumentException("El nombre del usuario es obligatorio");
++        }
++        return nombre;
++    }
++
++    private String validarCorreo(String correo) {
++        if (correo == null || !correo.contains("@")) {
++            throw new IllegalArgumentException("El correo del usuario no es valido");
++        }
++        return correo;
++    }
++
++    public String getId() {
++        return id;
++    }
++
++    public String getNombre() {
++        return nombre;
++    }
++
++    public String getCorreo() {
++        return correo;
++    }
++
++    public CanalNotificacion getCanalPreferido() {
++        return canalPreferido;
++    }
++
++    /**
++     * Permite que un usuario cambie su canal de notificacion preferido
++     * (por ejemplo, desde EMAIL a WHATSAPP) sin afectar a ninguna otra
++     * clase: quien decide como se construye el Notificador adecuado es
++     * la fabrica de notificadores (Factory Method), no Usuario.
++     */
++    public void setCanalPreferido(CanalNotificacion canalPreferido) {
++        this.canalPreferido = Objects.requireNonNull(canalPreferido, "El canal preferido no puede ser nulo");
++    }
++
++    /**
++     * Cada tipo de usuario define su propio rol dentro del sistema.
++     * Este metodo es un ejemplo de polimorfismo: cada subclase lo
++     * implementa de forma distinta sin que el resto del sistema
++     * necesite conocer de que subtipo se trata.
++     */
++    public abstract String describirRol();
++
++    @Override
++    public boolean equals(Object o) {
++        if (this == o) return true;
++        if (!(o instanceof Usuario usuario)) return false;
++        return id.equals(usuario.id);
++    }
++
++    @Override
++    public int hashCode() {
++        return Objects.hash(id);
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/domain/Correo.java b/src/main/java/edu/uees/tutorias/domain/Correo.java
+new file mode 100644
+index 0000000..fbc951f
+--- /dev/null
++++ b/src/main/java/edu/uees/tutorias/domain/Correo.java
+@@ -0,0 +1,50 @@
++package edu.uees.tutorias.domain;
++
++/**
++ * Value Object que representa una direccion de correo electronico valida.
++ *
++ * <p>Problema de diseño que resuelve (Refactorizacion 1 de Ae5):
++ * {@link Usuario} guardaba el correo como un {@code String} y validaba
++ * su forma en un metodo privado ({@code validarCorreo}). Eso es
++ * <em>Primitive Obsession</em>: el tipo del atributo no dice nada sobre
++ * la regla que lo hace valido, la validacion vive lejos del dato y
++ * cualquier otra clase que reciba un {@code String} "correo" no tiene
++ * forma de saber si ya fue validado. Con el tiempo, la misma regla
++ * (contener una arroba, y mañana el dominio institucional o la
++ * normalizacion a minusculas) se habria duplicado en cada punto de
++ * entrada.</p>
++ *
++ * <p>Al convertirlo en Value Object, la regla queda en un solo lugar y
++ * se aplica en el momento de construir el valor: si existe una
++ * instancia de {@code Correo}, es valida por construccion, y el propio
++ * tipo lo comunica en cada firma donde aparece. Es inmutable y su
++ * identidad es su valor, no una referencia (de ahi {@code record}).</p>
++ *
++ * <p>El comportamiento observable no cambia: se sigue rechazando un
++ * correo nulo o sin arroba con {@link IllegalArgumentException} y con el
++ * mismo mensaje, y {@code toString()} devuelve el texto original, de modo
++ * que los notificadores que lo interpolan siguen imprimiendo lo mismo.</p>
++ */
++public record Correo(String valor) {
++
++    public Correo {
++        if (valor == null || !valor.contains("@")) {
++            throw new IllegalArgumentException("El correo del usuario no es valido");
++        }
++    }
++
++    /** Parte local del correo (lo que precede a la arroba). */
++    public String usuario() {
++        return valor.substring(0, valor.indexOf('@'));
++    }
++
++    /** Dominio del correo (lo que sigue a la arroba). */
++    public String dominio() {
++        return valor.substring(valor.indexOf('@') + 1);
++    }
++
++    @Override
++    public String toString() {
++        return valor;
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/domain/Usuario.java b/src/main/java/edu/uees/tutorias/domain/Usuario.java
+index f45c769..4478f4a 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Usuario.java
++++ b/src/main/java/edu/uees/tutorias/domain/Usuario.java
+@@ -10,12 +10,20 @@ import java.util.Objects;
+  * Docente heredan de esta clase porque ambos SON usuarios y comparten
+  * este mismo conjunto de atributos y reglas de validacion; no se trata
+  * de una herencia usada solo para reutilizar codigo.
++ *
++ * <p>Refactorizacion 1 de Ae5 (introducir Value Object): el correo dejo
++ * de ser un {@code String} validado por un metodo privado de esta clase
++ * y paso a ser un {@link Correo}, que se valida a si mismo al
++ * construirse. Usuario ya no tiene que conocer que hace valido a un
++ * correo: solo pide uno. El comportamiento observable es el mismo (un
++ * correo nulo o sin arroba sigue lanzando IllegalArgumentException con
++ * el mismo mensaje, y el texto del correo se lee de vuelta igual).</p>
+  */
+ public abstract class Usuario {
+ 
+     private final String id;
+     private final String nombre;
+-    private final String correo;
++    private final Correo correo;
+     private CanalNotificacion canalPreferido;
+ 
+     protected Usuario(String id, String nombre, String correo) {
+@@ -25,7 +33,7 @@ public abstract class Usuario {
+     protected Usuario(String id, String nombre, String correo, CanalNotificacion canalPreferido) {
+         this.id = Objects.requireNonNull(id, "El id no puede ser nulo");
+         this.nombre = validarNombre(nombre);
+-        this.correo = validarCorreo(correo);
++        this.correo = new Correo(correo);
+         this.canalPreferido = Objects.requireNonNull(canalPreferido, "El canal preferido no puede ser nulo");
+     }
+ 
+@@ -36,13 +44,6 @@ public abstract class Usuario {
+         return nombre;
+     }
+ 
+-    private String validarCorreo(String correo) {
+-        if (correo == null || !correo.contains("@")) {
+-            throw new IllegalArgumentException("El correo del usuario no es valido");
+-        }
+-        return correo;
+-    }
+-
+     public String getId() {
+         return id;
+     }
+@@ -51,7 +52,7 @@ public abstract class Usuario {
+         return nombre;
+     }
+ 
+-    public String getCorreo() {
++    public Correo getCorreo() {
+         return correo;
+     }
+ 
+diff --git a/src/test/java/edu/uees/tutorias/domain/CorreoTest.java b/src/test/java/edu/uees/tutorias/domain/CorreoTest.java
+new file mode 100644
+index 0000000..9b660a5
+--- /dev/null
++++ b/src/test/java/edu/uees/tutorias/domain/CorreoTest.java
+@@ -0,0 +1,49 @@
++package edu.uees.tutorias.domain;
++
++import org.junit.jupiter.api.Test;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++
++/**
++ * Pruebas propias del Value Object introducido en la Refactorizacion 1.
++ *
++ * <p>Estas pruebas no protegen comportamiento heredado (eso lo hace
++ * {@link UsuarioTest}), sino que documentan el contrato del nuevo tipo:
++ * un {@code Correo} no puede existir invalido, es igual a otro por su
++ * valor y se imprime como el texto original. Ganar este punto de
++ * prueba tan pequeño es justamente lo que hace valioso el Value Object:
++ * antes, la misma regla solo podia probarse construyendo un Usuario
++ * completo.</p>
++ */
++class CorreoTest {
++
++    @Test
++    void unCorreoValidoConservaSuTexto() {
++        Correo correo = new Correo("luis.perez@uees.edu.ec");
++
++        assertEquals("luis.perez@uees.edu.ec", correo.valor());
++        assertEquals("luis.perez@uees.edu.ec", correo.toString());
++    }
++
++    @Test
++    void unCorreoNoPuedeExistirInvalido() {
++        assertEquals("El correo del usuario no es valido",
++                assertThrows(IllegalArgumentException.class, () -> new Correo("sin-arroba")).getMessage());
++        assertThrows(IllegalArgumentException.class, () -> new Correo(null));
++    }
++
++    @Test
++    void dosCorreosConElMismoValorSonIguales() {
++        assertEquals(new Correo("ana@uees.edu.ec"), new Correo("ana@uees.edu.ec"));
++        assertEquals(new Correo("ana@uees.edu.ec").hashCode(), new Correo("ana@uees.edu.ec").hashCode());
++    }
++
++    @Test
++    void elCorreoSabeSeparaseEnUsuarioYDominio() {
++        Correo correo = new Correo("ana.torres@uees.edu.ec");
++
++        assertEquals("ana.torres", correo.usuario());
++        assertEquals("uees.edu.ec", correo.dominio());
++    }
++}
+-- 
+2.43.0
+

@@ -1,0 +1,321 @@
+
+=== 3f052d6  2026-09-21 22:12
+refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos
+
+Problema de diseño: GeneradorReciboReserva tenia dos razones de cambio.
+Decidia cuanto se cobra (PRECIO_BASE, DESCUENTO_REPROGRAMACION,
+DESCUENTO_FIDELIDAD, el prefijo del codigo institucional y el switch que
+los aplica) y ademas como se ve el recibo (rotulos, orden de lineas,
+saltos de linea). Que el area academica cambie un descuento y que se
+agregue una linea al recibo son cambios sin relacion entre si, y los dos
+llegaban al mismo archivo. Ademas el precio circulaba como un double
+suelto: nada lo distinguia de un porcentaje o de una cantidad de horas,
+su formato estaba escrito a mano en la concatenacion final y la
+operacion precio - (precio * descuento) se repetia en dos ramas.
+
+Cambio:
+- TarifarioTutoria concentra la regla de cobro y devuelve un importe.
+- Dinero es el Value Object del importe: lleva su unica operacion de
+  negocio (aplicar un descuento) y su propio formato.
+- GeneradorReciboReserva queda como formateador y admite recibir otro
+  tarifario por constructor.
+
+Se mantiene double como representacion interna y la misma expresion
+aritmetica, para que el total no cambie ni en el ultimo decimal; migrar
+a BigDecimal seria un cambio de comportamiento y queda fuera de esta
+refactorizacion.
+
+Pruebas que protegen el cambio: GeneradorReciboReservaTest (los 6
+recibos comparados caracter por caracter). Ademas, el harness de Ae4
+(LineaBaseRecibos) se volvio a ejecutar y su salida no presenta ninguna
+diferencia con la capturada en Ae4
+(docs/ae5-evidencias/07-linea-base-recibos-ae5.txt). Se agrega
+TarifarioTutoriaTest, que prueba cada regla de cobro sin pasar por el
+texto del recibo.
+
+Suite: 80 pruebas, 80 correctas.
+
+
+ .../06-suite-verde-extract-class-tarifario.txt     | 112 +++++++++++++++++++++
+ docs/ae5-evidencias/07-linea-base-recibos-ae5.txt  |  56 +++++++++++
+ src/main/java/edu/uees/tutorias/domain/Dinero.java |  36 +++++++
+ .../tutorias/domain/tarifa/TarifarioTutoria.java   |  55 ++++++++++
+ .../tutorias/reporte/GeneradorReciboReserva.java   |  74 ++++++--------
+ .../domain/tarifa/TarifarioTutoriaTest.java        |  93 +++++++++++++++++
+ 6 files changed, 385 insertions(+), 41 deletions(-)
+
+=== 451cd1a  2026-09-21 22:10
+refactor: agrupa el data clump estudiante/docente/horario en SolicitudTutoria
+
+Problema de diseño: los tres datos que definen una solicitud viajaban
+siempre juntos y siempre sueltos. El codigo cliente llamaba a
+solicitarReserva(estudiante, docente, horario), que reenviaba los mismos
+tres argumentos en el mismo orden a new Reserva(estudiante, docente,
+horario). Es un Data Clump con consecuencias concretas: dos de los tres
+parametros son Usuario, asi que invertirlos compilaba sin queja; la
+validacion del trio estaba repetida; y agregar un cuarto dato de la
+solicitud (modalidad, asignatura) habria obligado a cambiar todas las
+firmas de la cadena.
+
+Cambio: se introduce el record SolicitudTutoria, que agrupa y valida los
+tres datos una sola vez. Reserva y ServicioReservas reciben la solicitud
+completa y conservan sus firmas anteriores como sobrecargas que delegan,
+para no romper ningun cliente. Main pasa a usar el nuevo tipo.
+
+Efecto colateral positivo: como la solicitud se valida antes de tocar el
+horario, una solicitud incompleta ya no deja el horario ocupado. Antes,
+marcarOcupado() se ejecutaba primero y el fallo posterior del
+constructor dejaba el bloque inutilizable. Queda cubierto por
+unaSolicitudIncompletaNoConsumeElHorario.
+
+Pruebas que protegen el cambio: toda la suite de ServicioReservas y
+ReservaTest siguen usando las firmas de tres argumentos; se agrega
+SolicitudTutoriaTest con los mensajes de validacion y la igualdad por
+valor.
+
+Suite: 74 pruebas, 74 correctas.
+
+
+ .../05-suite-verde-data-clump-solicitud.txt        | 104 +++++++++++++++++++++
+ src/main/java/edu/uees/tutorias/app/Main.java      |   8 +-
+ .../java/edu/uees/tutorias/domain/Reserva.java     |  26 +++++-
+ .../edu/uees/tutorias/domain/SolicitudTutoria.java |  41 ++++++++
+ .../uees/tutorias/service/ServicioReservas.java    |  23 ++++-
+ .../ServicioReservasCaracterizacionTest.java       |   9 ++
+ .../uees/tutorias/domain/SolicitudTutoriaTest.java |  70 ++++++++++++++
+ 7 files changed, 271 insertions(+), 10 deletions(-)
+
+=== 41f14c7  2026-09-21 22:09
+refactor: mueve la composicion de la nota de cancelacion a ResultadoCancelacion
+
+Problema de diseño: ServicioReservas.cancelarReserva armaba la nota con
+un operador ternario que preguntaba resultado.getObservacion().isEmpty()
+y concatenaba corchetes segun la respuesta. Era Feature Envy -- el
+servicio interrogaba los datos de otro objeto para decidir en su lugar --
+y una condicion sin nombre mezclada con la orquestacion del caso de uso;
+cualquier cambio de formato de la nota obligaba a tocar el servicio.
+
+Cambio (Decompose Conditional + Move Method): la regla pasa a
+ResultadoCancelacion.componerNota(motivo), con la condicion nombrada
+como tieneObservacion(). El servicio ahora solo pide la nota y queda
+reducido a orquestacion: obtener, evaluar, cancelar, guardar, publicar.
+
+Pruebas que protegen el cambio: ServicioReservasCaracterizacionTest
+(nota exactamente igual al motivo cuando no hay observacion, y motivo
+mas observacion entre corchetes cuando la hay) y ServicioReservasTest
+de Ae4 (cancelacion tardia marcada por la politica con antelacion). Se
+agrega ResultadoCancelacionTest para probar la regla sin montar el
+servicio completo.
+
+Suite: 69 pruebas, 69 correctas.
+
+
+ .../04-suite-verde-decompose-conditional.txt       | 97 ++++++++++++++++++++++
+ .../uees/tutorias/service/ServicioReservas.java    |  6 +-
+ .../service/cancelacion/ResultadoCancelacion.java  | 27 ++++++
+ .../cancelacion/ResultadoCancelacionTest.java      | 48 +++++++++++
+ 4 files changed, 173 insertions(+), 5 deletions(-)
+
+=== 7902476  2026-09-21 22:08
+refactor: mueve la regla de disponibilidad al dominio con guard clauses
+
+Problema de diseño: ServicioReservas validaba reglas que pertenecen al
+dominio. En solicitarReserva preguntaba horario.isDisponible() y, si la
+respuesta era afirmativa, llamaba a horario.marcarOcupado(): la pregunta
+y la accion quedaban separadas, el servicio conocia una regla del
+Horario y cualquier otro cliente podia olvidar la pregunta. En
+reprogramarReserva comprobaba la disponibilidad del nuevo horario antes
+de delegar en Reserva.reprogramar, de modo que reprogramar por otra via
+salteaba la validacion.
+
+Cambio:
+- Horario.reservar(): valida y ocupa en una sola operacion indivisible,
+  con guard clause y el mismo mensaje que emitia el servicio.
+- Reserva.reprogramar(): concentra sus tres validaciones como guard
+  clauses al inicio; ninguna mutacion ocurre antes de que todas pasen
+  (antes, un horario nulo liberaba el horario anterior y recien despues
+  fallaba, dejando la reserva a medio camino).
+- ServicioReservas pierde ambos bloques condicionales y queda solo con
+  orquestacion.
+
+Pruebas que protegen el cambio: ServicioReservasCaracterizacionTest
+(mensajes exactos de ambos rechazos, ausencia de eventos publicados y
+reserva intacta tras el rechazo) y ServicioReservasTest de Ae4
+(noSePuedeReservarUnHorarioYaOcupado, reprogramarReserva...). Se agregan
+pruebas de Horario.reservar() y de la atomicidad de reprogramar.
+
+Suite: 66 pruebas, 66 correctas.
+
+
+ .../03-suite-verde-move-method-guard-clauses.txt   | 92 ++++++++++++++++++++++
+ .../java/edu/uees/tutorias/domain/Horario.java     | 25 ++++++
+ .../java/edu/uees/tutorias/domain/Reserva.java     | 20 ++++-
+ .../uees/tutorias/service/ServicioReservas.java    |  8 +-
+ .../java/edu/uees/tutorias/domain/HorarioTest.java | 19 +++++
+ .../java/edu/uees/tutorias/domain/ReservaTest.java | 27 +++++++
+ 6 files changed, 183 insertions(+), 8 deletions(-)
+
+=== fcab73f  2026-09-21 22:07
+refactor: extrae AgendaDocente de Docente (Extract Class)
+
+Problema de diseño: Docente tenia dos razones de cambio en la misma
+clase. Era un Usuario (identidad, nombre, correo, canal preferido, rol)
+y al mismo tiempo administraba una estructura de datos con su propia
+regla de negocio: la lista de horarios, la validacion de solapamiento y
+la exposicion de solo lectura. Toda evolucion de la disponibilidad
+(proximo horario libre, cupos por semana, retirar un horario publicado)
+habria engordado a Docente sin relacion con lo que lo hace un usuario.
+
+Cambio: la coleccion de horarios y la regla de no solapamiento se mueven
+a la nueva clase AgendaDocente (Extract Class + Move Method). Docente
+conserva su interfaz publica (publicarHorario, getHorarios) delegando en
+su agenda, de modo que ningun cliente -- Main, ServicioReservas, pruebas
+-- necesito cambiar.
+
+Pruebas que protegen el cambio: DocenteTest (publicacion en orden,
+rechazo del solapamiento con el mismo mensaje, coleccion inmodificable,
+horarios consecutivos permitidos). Se agrega AgendaDocenteTest, que
+prueba la regla sin construir un Docente completo.
+
+Nota: al mover el metodo se detecto que no valida el nulo. Se dejo
+igual a proposito: refactorizar no es corregir comportamiento.
+
+Suite: 62 pruebas, 62 correctas.
+
+
+ .../02-suite-verde-extract-class-agenda.txt        | 88 ++++++++++++++++++++++
+ .../edu/uees/tutorias/domain/AgendaDocente.java    | 62 +++++++++++++++
+ .../java/edu/uees/tutorias/domain/Docente.java     | 33 ++++----
+ .../uees/tutorias/domain/AgendaDocenteTest.java    | 66 ++++++++++++++++
+ 4 files changed, 235 insertions(+), 14 deletions(-)
+
+=== d25dffc  2026-09-21 22:06
+refactor: introduce el Value Object Correo en lugar de un String validado
+
+Problema de diseño: Usuario guardaba el correo como String y validaba su
+forma en un metodo privado (Primitive Obsession). El tipo del atributo no
+comunicaba ninguna regla, la validacion vivia lejos del dato y cualquier
+clase que recibiera un "String correo" no podia saber si ya estaba
+validado; la regla habria terminado duplicada en cada punto de entrada.
+
+Cambio: se crea el record Correo, que valida su propio valor al
+construirse (no puede existir un Correo invalido) y se convierte en el
+tipo del atributo de Usuario. getCorreo() ahora devuelve Correo; su
+toString() sigue entregando el texto original, por lo que los
+notificadores que lo interpolan imprimen exactamente lo mismo.
+
+Pruebas que protegen el cambio: UsuarioTest (correo nulo y sin arroba
+rechazados con el mismo mensaje, correo leido de vuelta como el mismo
+texto) y NotificadorCreatorFactoryTest (el notificador de email sigue
+componiendo su linea). Se agrega CorreoTest con el contrato del nuevo
+tipo, ahora probable de forma aislada.
+
+Suite: 58 pruebas, 58 correctas.
+
+
+ .../01-suite-verde-value-object-correo.txt         |  82 +++++++++++++++
+ docs/ae5-evidencias/codigo-antes/Docente.java      |  50 +++++++++
+ .../codigo-antes/GeneradorReciboReserva.java       |  70 +++++++++++++
+ docs/ae5-evidencias/codigo-antes/Horario.java      |  74 +++++++++++++
+ docs/ae5-evidencias/codigo-antes/Reserva.java      |  91 ++++++++++++++++
+ .../codigo-antes/ServicioReservas.java             | 114 +++++++++++++++++++++
+ docs/ae5-evidencias/codigo-antes/Usuario.java      |  91 ++++++++++++++++
+ src/main/java/edu/uees/tutorias/domain/Correo.java |  50 +++++++++
+ .../java/edu/uees/tutorias/domain/Usuario.java     |  21 ++--
+ .../java/edu/uees/tutorias/domain/CorreoTest.java  |  49 +++++++++
+ 10 files changed, 682 insertions(+), 10 deletions(-)
+
+=== 82f82ff  2026-09-21 22:05
+test: red de seguridad de caracterizacion para Ae5
+
+Antes de tocar el diseño se amplia la suite para que cubra exactamente
+el comportamiento que las refactorizaciones de Ae5 deben preservar:
+
+- GeneradorReciboReservaTest: los 6 casos del harness manual de Ae4
+  migrados a JUnit 5, comparando el recibo caracter por caracter.
+- UsuarioTest, HorarioTest, ReservaTest, DocenteTest: validaciones,
+  transiciones de estado, mensajes de error y formato de toString().
+- ServicioReservasCaracterizacionTest: mensajes exactos de cada rechazo,
+  composicion de la nota de cancelacion, orden de eventos publicados y
+  ausencia de efectos a medias cuando una operacion se rechaza.
+
+Se agrega tambien tools/verificar-offline.sh, que compila y ejecuta esta
+misma suite JUnit con un ejecutor propio para poder cerrar el ciclo
+PRUEBA VERDE -> CAMBIO -> PRUEBA VERDE en un entorno sin acceso a Maven
+Central. La ejecucion oficial sigue siendo mvn clean test
+(tools/verificar.sh).
+
+Suite: 54 pruebas, 54 correctas. Ningun archivo de src/main modificado.
+
+
+ .gitignore                                         |   1 +
+ docs/ae5-evidencias/00-suite-verde-linea-base.txt  |  76 +++++++++
+ .../ServicioReservasCaracterizacionTest.java       | 173 +++++++++++++++++++++
+ .../java/edu/uees/tutorias/domain/DocenteTest.java |  80 ++++++++++
+ .../java/edu/uees/tutorias/domain/HorarioTest.java |  81 ++++++++++
+ .../java/edu/uees/tutorias/domain/ReservaTest.java | 137 ++++++++++++++++
+ .../java/edu/uees/tutorias/domain/UsuarioTest.java |  92 +++++++++++
+ .../reporte/GeneradorReciboReservaTest.java        | 148 ++++++++++++++++++
+ tools/verificacion-offline/RunnerOffline.java      |  86 ++++++++++
+ .../stubs/org/junit/jupiter/api/Assertions.java    | 119 ++++++++++++++
+ .../stubs/org/junit/jupiter/api/BeforeEach.java    |  12 ++
+ .../stubs/org/junit/jupiter/api/DisplayName.java   |  13 ++
+ .../stubs/org/junit/jupiter/api/Test.java          |  20 +++
+ tools/verificar-offline.sh                         |  31 ++++
+ tools/verificar.sh                                 |  14 ++
+ 15 files changed, 1083 insertions(+)
+
+=== 5b9e3b1  2026-09-21 22:02
+chore: linea base Ae4 (punto de partida de Ae5)
+
+Estado del proyecto al cerrar Ae4: dominio de tutorias con Strategy,
+Observer y Factory Method integrados, kata de refactorizacion sobre
+GeneradorReciboReserva y suite JUnit de ServicioReservas y de la
+fabrica de notificadores. Este commit fija la linea base sobre la que
+se aplican las refactorizaciones avanzadas de Ae5.
+
+
+ .gitignore                                         |   9 +
+ GUIA_GIT.md                                        | 215 +++++++++++++
+ README.md                                          | 334 +++++++++++++++++++++
+ docs/ae4-evidencias/git-log-stat.txt               |  15 +
+ docs/ae4-evidencias/git-log.txt                    |   7 +
+ docs/ae4-evidencias/linea-base-antes.txt           |  56 ++++
+ docs/ae4-evidencias/linea-despues.txt              |  56 ++++
+ docs/modelo-clases.png                             | Bin 0 -> 158378 bytes
+ docs/modelo-clases.svg                             |  56 ++++
+ docs/uml-incremento1.png                           | Bin 0 -> 289545 bytes
+ docs/uml-incremento1.svg                           |  92 ++++++
+ pom.xml                                            |  43 +++
+ src/main/java/edu/uees/tutorias/app/Main.java      |  77 +++++
+ .../uees/tutorias/domain/CanalNotificacion.java    |  13 +
+ .../java/edu/uees/tutorias/domain/Docente.java     |  50 +++
+ .../edu/uees/tutorias/domain/EstadoReserva.java    |  12 +
+ .../java/edu/uees/tutorias/domain/Estudiante.java  |  28 ++
+ .../java/edu/uees/tutorias/domain/Horario.java     |  74 +++++
+ .../java/edu/uees/tutorias/domain/Reserva.java     |  91 ++++++
+ .../java/edu/uees/tutorias/domain/Usuario.java     |  91 ++++++
+ .../uees/tutorias/notification/Notificador.java    |  17 ++
+ .../notification/NotificadorEmailConsola.java      |  20 ++
+ .../notification/NotificadorSmsConsola.java        |  16 +
+ .../notification/NotificadorWhatsAppConsola.java   |  17 ++
+ .../factory/EmailNotificadorCreator.java           |  13 +
+ .../notification/factory/NotificadorCreator.java   |  37 +++
+ .../factory/NotificadorCreatorFactory.java         |  36 +++
+ .../factory/SmsNotificadorCreator.java             |  13 +
+ .../factory/WhatsAppNotificadorCreator.java        |  19 ++
+ .../observer/NotificadorObservador.java            |  48 +++
+ .../notification/observer/ObservadorReserva.java   |  26 ++
+ .../observer/RegistroAuditoriaObservador.java      |  33 ++
+ .../tutorias/reporte/GeneradorReciboReserva.java   |  70 +++++
+ .../tutorias/repository/RepositorioReservas.java   |  27 ++
+ .../repository/RepositorioReservasEnMemoria.java   |  44 +++
+ .../uees/tutorias/service/ServicioReservas.java    | 114 +++++++
+ .../service/cancelacion/PoliticaCancelacion.java   |  28 ++
+ .../PoliticaCancelacionConAntelacion.java          |  44 +++
+ .../cancelacion/PoliticaCancelacionEstandar.java   |  18 ++
+ .../service/cancelacion/ResultadoCancelacion.java  |  38 +++
+ .../edu/uees/tutorias/ServicioReservasTest.java    | 147 +++++++++
+ .../factory/NotificadorCreatorFactoryTest.java     |  29 ++
+ .../uees/tutorias/reporte/LineaBaseRecibos.java    | 159 ++++++++++
+ 43 files changed, 2332 insertions(+)

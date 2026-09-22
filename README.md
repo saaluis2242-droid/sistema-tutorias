@@ -21,7 +21,7 @@ negocio independiente de la tecnología de persistencia, de la regla de
 cancelación vigente y del canal de notificación, para que las tres
 puedan cambiar sin afectar las reglas del dominio.
 
-Este repositorio documenta la evolución del proyecto en cuatro entregas:
+Este repositorio documenta la evolución del proyecto en cinco entregas:
 
 - **Ae1** (Semana 2): análisis de dominio, diseño OO, cohesión/acoplamiento,
   SOLID y UML inicial.
@@ -30,11 +30,18 @@ Este repositorio documenta la evolución del proyecto en cuatro entregas:
 - **Ae3 — Incremento 1** (Semana 4): identificación de problemas reales de
   diseño e integración de **Strategy** y **Observer**, recuperando de Ae2
   el patrón que seguía justificado.
-- **Ae4 — Kata de refactorización** (Semana 5, esta entrega): se agregó un
+- **Ae4 — Kata de refactorización** (Semana 5): se agregó un
   generador de recibos con Code Smells deliberados y se refactorizó en 4
   pasos incrementales (Rename, Extract Method, Replace Magic Number,
   Simplify Conditional) verificando en cada paso que el comportamiento
   observable no cambia.
+- **Ae5 — Refactorización respaldada por pruebas unitarias** (Semana 6,
+  esta entrega): se amplió la suite JUnit hasta convertirla en una red de
+  seguridad de caracterización y, con ella en verde, se aplicaron **6
+  refactorizaciones avanzadas** sobre el diseño heredado de Ae1–Ae4
+  (Value Object, Extract Class, Move Method, Guard Clauses, Decompose
+  Conditional y agrupación de un Data Clump), una por commit y
+  ejecutando la suite completa antes y después de cada cambio.
 
 ## Objetivos
 
@@ -54,6 +61,11 @@ Este repositorio documenta la evolución del proyecto en cuatro entregas:
   Replace Magic Number, Simplify Conditional) sobre código con Code
   Smells reales, verificando en cada paso que el comportamiento
   observable se conserva.
+- Construir una red de seguridad de pruebas unitarias de caracterización
+  y, respaldado por ella, refactorizar el diseño heredado con técnicas de
+  mayor alcance (Value Object, Extract Class, Move Method, Guard Clauses,
+  Decompose Conditional, Data Clumps), demostrando con pruebas y con el
+  historial Git que el comportamiento preservado no se alteró.
 
 ## Tecnologías
 
@@ -98,7 +110,10 @@ src/
 │   └── java/
 │       └── edu/uees/tutorias/
 │           ├── domain/                  (Usuario, Estudiante, Docente, Horario,
-│           │                              Reserva, EstadoReserva, CanalNotificacion)
+│           │                              Reserva, EstadoReserva, CanalNotificacion,
+│           │                              Correo, AgendaDocente, SolicitudTutoria,
+│           │                              Dinero — los cuatro ultimos de Ae5;
+│           │                              tarifa/TarifarioTutoria, Ae5)
 │           ├── service/
 │           │   ├── ServicioReservas.java
 │           │   └── cancelacion/         (Strategy: PoliticaCancelacion + 2 implementaciones,
@@ -115,13 +130,28 @@ src/
 └── test/
     └── java/
         └── edu/uees/tutorias/
-            ├── ServicioReservasTest.java
+            ├── ServicioReservasTest.java              (Ae4)
+            ├── ServicioReservasCaracterizacionTest.java (Ae5)
+            ├── domain/                                (Ae5: UsuarioTest, CorreoTest,
+            │                                            HorarioTest, ReservaTest,
+            │                                            DocenteTest, AgendaDocenteTest,
+            │                                            SolicitudTutoriaTest,
+            │                                            tarifa/TarifarioTutoriaTest)
+            ├── service/cancelacion/ResultadoCancelacionTest.java (Ae5)
             ├── notification/factory/NotificadorCreatorFactoryTest.java
-            └── reporte/LineaBaseRecibos.java   (linea base y verificacion de Ae4)
+            └── reporte/
+                ├── GeneradorReciboReservaTest.java    (Ae5: los 6 casos de Ae4 en JUnit)
+                └── LineaBaseRecibos.java              (harness manual de Ae4)
+tools/
+├── verificar.sh                     (mvn clean test + captura del log)
+├── verificar-offline.sh             (ejecuta la misma suite sin Maven Central)
+└── verificacion-offline/            (ejecutor por reflexion + stubs de la API de JUnit)
 docs/
 ├── modelo-clases.svg / .png         (UML de Ae1)
 ├── uml-incremento1.svg / .png       (UML actualizado de Ae3)
-└── ae4-evidencias/                  (linea base antes/despues, git log — Ae4)
+├── ae4-evidencias/                  (linea base antes/despues, git log — Ae4)
+└── ae5-evidencias/                  (suite verde por commit, git log, diffs,
+                                      codigo antes/despues, parches — Ae5)
 pom.xml
 README.md
 GUIA_GIT.md
@@ -274,6 +304,95 @@ no reporta ninguna diferencia.
 | Comportamiento observable | — | Idéntico: los 6 casos producen el mismo texto de recibo antes y después |
 | Git | 1 commit de línea base | 4 commits de refactorización, uno por técnica aplicada |
 
+## Refactorización respaldada por pruebas unitarias (Ae5)
+
+Ae4 refactorizó una clase pequeña y autocontenida. Ae5 va sobre el
+diseño heredado del propio sistema (Ae1–Ae4) con técnicas de mayor
+alcance, y la condición para hacerlo con seguridad es tener primero una
+red de pruebas que fije el comportamiento que debe preservarse.
+
+### Paso 0 | Red de seguridad
+
+Antes de tocar `src/main` se amplió la suite hasta **54 pruebas** que
+describen lo que el sistema hace hoy, no lo que debería hacer:
+
+| Clase de prueba | Qué fija |
+|---|---|
+| `GeneradorReciboReservaTest` | Los 6 recibos del harness de Ae4, migrados a JUnit 5 y comparados carácter por carácter (incluye el formato `$13.5` y los dos caminos del descuento de fidelidad). |
+| `UsuarioTest` | Validación de nombre y correo con sus mensajes exactos, canal por defecto, igualdad por id, rol de cada subtipo. |
+| `HorarioTest` | Validación de inicio/fin, ocupar y liberar, solapamiento, igualdad por intervalo y el `toString()` del que depende el recibo. |
+| `ReservaTest` | Todas las transiciones de estado válidas e inválidas con sus mensajes, y el efecto de cada una sobre el horario y las notas. |
+| `DocenteTest` | Publicación de horarios, orden, rechazo del solapamiento y colección de solo lectura. |
+| `ServicioReservasCaracterizacionTest` | Mensajes exactos de cada rechazo, composición de la nota de cancelación, orden de los eventos publicados y ausencia de efectos a medias cuando una operación se rechaza. |
+| `ServicioReservasTest` (de Ae4) | Se mantuvo **sin modificar**, como control independiente. |
+
+Este paso es un commit aparte (`test: red de seguridad…`) que no cambia
+ni una línea de `src/main`.
+
+### Ciclo aplicado
+
+    PRUEBA VERDE → CAMBIO PEQUEÑO → PRUEBA VERDE → COMMIT → SIGUIENTE CAMBIO
+
+Ninguna refactorización se acumuló con otra: cada una tiene su commit,
+y la suite completa se ejecutó antes y después de cada cambio. Los logs
+por commit están en [`docs/ae5-evidencias/`](docs/ae5-evidencias/) y se
+regeneraron ejecutando la suite sobre cada commit del historial, de modo
+que cada archivo corresponde exactamente a ese estado del código.
+
+### Las 6 refactorizaciones
+
+| # | Técnica | Problema de diseño | Qué se hizo | Prueba que la protege | Commit |
+|---|---|---|---|---|---|
+| 1 | **Introduce Value Object** | `Usuario` guardaba el correo como `String` y validaba su forma en un método privado (*Primitive Obsession*): el tipo no comunicaba la regla, la validación vivía lejos del dato y cualquier clase que recibiera un "String correo" no podía saber si ya estaba validado. | Se crea el record `Correo`, válido por construcción; pasa a ser el tipo del atributo. `toString()` devuelve el texto original, por lo que los notificadores imprimen lo mismo. | `UsuarioTest` (correo nulo y sin arroba, mismo mensaje; correo leído de vuelta igual), `NotificadorCreatorFactoryTest`. | `refactor: introduce el Value Object Correo…` |
+| 2 | **Extract Class** + Move Method | `Docente` tenía dos razones de cambio: ser un `Usuario` y administrar la lista de horarios con su regla de no solapamiento. Toda evolución de la disponibilidad engordaba una clase de identidad. | La colección y la regla se mueven a `AgendaDocente`; `Docente` delega y conserva su interfaz pública. | `DocenteTest` (orden, mensaje del rechazo, colección inmodificable) y el nuevo `AgendaDocenteTest`. | `refactor: extrae AgendaDocente de Docente…` |
+| 3 | **Move Method + Guard Clauses** | `ServicioReservas` validaba reglas del dominio: preguntaba `isDisponible()` y luego llamaba a `marcarOcupado()` (pregunta y acción separadas), y comprobaba la disponibilidad del nuevo horario antes de delegar en `Reserva.reprogramar`, de modo que reprogramar por otra vía salteaba la validación. | `Horario.reservar()` valida y ocupa en una operación indivisible; `Reserva.reprogramar()` concentra sus tres validaciones como guard clauses y no muta nada antes de que todas pasen. | `ServicioReservasCaracterizacionTest` (mensajes exactos, sin eventos publicados, reserva intacta) + nuevas pruebas de `Horario.reservar()` y de atomicidad. | `refactor: mueve la regla de disponibilidad al dominio…` |
+| 4 | **Decompose Conditional** + Move Method | La nota de cancelación se armaba con un ternario que interrogaba `resultado.getObservacion().isEmpty()` dentro del servicio (*Feature Envy*): una condición sin nombre mezclada con la orquestación. | La regla pasa a `ResultadoCancelacion.componerNota(motivo)`, con la condición nombrada `tieneObservacion()`. | `ServicioReservasCaracterizacionTest` (nota con y sin observación), `ServicioReservasTest` de Ae4, nuevo `ResultadoCancelacionTest`. | `refactor: mueve la composicion de la nota…` |
+| 5 | **Agrupar Data Clump** | El trío `(estudiante, docente, horario)` viajaba junto y suelto por toda la cadena; dos de los tres parámetros son `Usuario`, así que invertirlos compilaba sin queja, la validación estaba repetida y un cuarto dato habría cambiado todas las firmas. | Se introduce el record `SolicitudTutoria`, que agrupa y valida los tres datos una sola vez. Las firmas anteriores quedan como sobrecargas que delegan. | Toda la suite de `ServicioReservas` y `ReservaTest` (que siguen usando las firmas de tres argumentos) + `SolicitudTutoriaTest`. | `refactor: agrupa el data clump…` |
+| 6 | **Extract Class + Value Object** | `GeneradorReciboReserva` decidía *cuánto se cobra* y además *cómo se ve* el recibo: dos motivos de cambio sin relación en el mismo archivo, y la regla de precio solo podía probarse leyendo el texto impreso. El precio circulaba como un `double` suelto, con su formato escrito a mano. | La regla de cobro se mueve a `TarifarioTutoria`; el importe se representa con el Value Object `Dinero`, que lleva su operación de descuento y su formato. El generador queda como formateador. | `GeneradorReciboReservaTest` (6 recibos carácter por carácter) + `TarifarioTutoriaTest` (cada regla sin pasar por el texto). | `refactor: extrae TarifarioTutoria y el Value Object Dinero…` |
+
+### Evidencia de que el comportamiento se preservó
+
+- La suite pasó de 54 a **80 pruebas** y quedó **verde en los 7
+  commits**: 54 → 58 → 62 → 66 → 69 → 74 → 80, sin una sola prueba roja
+  y sin modificar ninguna aserción existente para "acomodarla" al nuevo
+  diseño.
+- El harness manual de Ae4 (`LineaBaseRecibos`) se volvió a ejecutar
+  contra el código final: `diff` contra la salida capturada en Ae4 **no
+  reporta ninguna diferencia** (`docs/ae5-evidencias/07-linea-base-recibos-ae5.txt`).
+- Ninguna refactorización necesitó cambiar `ServicioReservasTest` (la
+  suite de Ae4), que actúa como control independiente.
+
+### Comparación final antes/después
+
+| Dimensión | Antes (cierre de Ae4) | Después (Ae5) | Evidencia |
+|---|---|---|---|
+| Responsabilidades | `Docente` era identidad + agenda; `GeneradorReciboReserva` era tarifa + formato; `ServicioReservas` orquestaba y además validaba reglas del dominio. | Cada una con una sola razón de cambio: `AgendaDocente`, `TarifarioTutoria`, y un servicio reducido a orquestación. | `diff-src-main-ae4-vs-ae5.patch`; `codigo-antes/` vs `codigo-despues/` |
+| Cohesión | Reglas de negocio repartidas entre la capa de aplicación y el dominio. | Cada regla vive en el objeto que posee el dato (`Horario.reservar`, `Reserva.reprogramar`, `ResultadoCancelacion.componerNota`). | Refactorizaciones 3 y 4 |
+| Acoplamiento | El servicio conocía reglas internas de `Horario` y el formato de la nota; el generador conocía la política de precios. | El servicio depende solo de abstracciones y de operaciones con intención; el generador depende de un tarifario inyectable. | Refactorizaciones 3, 4 y 6 |
+| Datos del dominio | `String correo`, `double precio`, tres parámetros sueltos por firma. | Value Objects `Correo`, `Dinero` y el parameter object `SolicitudTutoria`, válidos por construcción. | Refactorizaciones 1, 5 y 6 |
+| Condicionales | Ternario de composición de nota en el servicio; pregunta + acción separadas; validaciones intercaladas con mutaciones. | Condiciones con nombre, guard clauses al inicio y ninguna mutación antes de validar. | Refactorizaciones 3 y 4 |
+| Pruebas | 10 pruebas JUnit + un harness manual sin JUnit. | 80 pruebas JUnit; las reglas extraídas se prueban de forma aislada, sin montar el servicio ni leer texto formateado. | Logs `01`–`07` en `docs/ae5-evidencias/` |
+| Git | 1 commit de línea base + 4 de la kata. | 1 commit de línea base + 1 de red de seguridad + 6 de refactorización, cada uno con su justificación y el estado de la suite. | `git-log-ae5.txt`, `git-log-ae5-detallado.txt` |
+
+### Decisiones deliberadas y sus costos
+
+- **`Dinero` sigue usando `double`.** La expresión aritmética se
+  conservó intacta para que el total no cambie ni en el último decimal.
+  Migrar a `BigDecimal` es un cambio de comportamiento, no una
+  refactorización, y queda como trabajo posterior declarado.
+- **Al mover `publicarHorario` se detectó que no valida el nulo.** Se
+  dejó tal cual: refactorizar no es corregir comportamiento. Queda
+  registrado en el javadoc de `AgendaDocente` como pendiente.
+- **Se conservaron las firmas antiguas como sobrecargas** en
+  `ServicioReservas` y `Reserva`. El costo es una vía de entrada
+  duplicada que habrá que retirar cuando ya no queden clientes viejos;
+  el beneficio fue que la suite existente siguió sirviendo como control
+  sin tocar una sola aserción.
+- **Efecto colateral positivo de la Refactorización 5:** como la
+  solicitud se valida antes de tocar el horario, una solicitud
+  incompleta ya no deja el bloque ocupado e inutilizable. Está cubierto
+  por `unaSolicitudIncompletaNoConsumeElHorario`.
+
 ## Pruebas
 
 Para ejecutar las pruebas:
@@ -282,18 +401,35 @@ Para ejecutar las pruebas:
 mvn clean test
 ```
 
-Se incluyen pruebas unitarias de `ServicioReservas` (solicitud, rechazo
-de horario ocupado, confirmación, cancelación estándar, cancelación
-tardía y rechazada según `PoliticaCancelacionConAntelacion`,
-reprogramación, y registro de un observador en tiempo de ejecución) y de
-`NotificadorCreatorFactory` (Factory Method).
+o, capturando el log como evidencia:
 
-> Nota de verificación: en el entorno donde se preparó este incremento y
-> esta kata no hubo acceso de red a Maven Central para descargar JUnit,
-> por lo que la lógica de cada prueba y de cada caso de la Kata de
-> refactorización se verificó además con réplicas manuales (sin
-> anotaciones JUnit) que confirmaron los mismos resultados. Se recomienda
-> ejecutar `mvn clean test` en un entorno con acceso normal a internet
+```bash
+bash tools/verificar.sh     # deja la salida en docs/ae5-evidencias/mvn-clean-test.txt
+```
+
+La suite tiene **80 pruebas JUnit 5** repartidas en 11 clases: el
+dominio completo (`Usuario`, `Correo`, `Horario`, `Reserva`, `Docente`,
+`AgendaDocente`, `SolicitudTutoria`), las reglas de cobro
+(`TarifarioTutoria`, `Dinero`), el generador de recibos carácter por
+carácter, la política de cancelación (`ResultadoCancelacion`), el
+servicio de reservas (suite de Ae4 más la de caracterización de Ae5) y
+el Factory Method de notificadores.
+
+> Nota de verificación: en el entorno donde se prepararon las
+> refactorizaciones de Ae5 no hubo acceso de red a Maven Central
+> (`repo.maven.apache.org` respondió 403 por política de egreso), por lo
+> que no fue posible descargar `junit-jupiter` ni Surefire. Para no
+> renunciar al ciclo PRUEBA VERDE → CAMBIO → PRUEBA VERDE, se añadió
+> `tools/verificar-offline.sh`: compila **las mismas pruebas JUnit 5 del
+> proyecto** contra stubs mínimos de la API (`@Test`, `@BeforeEach`,
+> `Assertions`) y las ejecuta con un ejecutor propio por reflexión
+> (`tools/verificacion-offline/RunnerOffline.java`), que respeta el
+> aislamiento por instancia de JUnit y devuelve código de salida 1 si
+> alguna prueba falla. Las pruebas no se modificaron para este ejecutor
+> y los stubs viven fuera de `src/`, de modo que `mvn clean test` las
+> compila contra el JUnit real. Los logs de las 7 ejecuciones (una por
+> commit) están en `docs/ae5-evidencias/`. Se recomienda ejecutar
+> `bash tools/verificar.sh` en un entorno con acceso normal a internet
 > para obtener el reporte oficial `BUILD SUCCESS`.
 
 ## Control de versiones
@@ -301,8 +437,12 @@ reprogramación, y registro de un observador en tiempo de ejecución) y de
 El proyecto utiliza la rama `main`. El historial de commits documenta la
 evolución del análisis, el modelo y la implementación en cada incremento,
 incluyendo el ciclo refactorización → compilar → ejecutar → comparar →
-commit de la Kata de Ae4 (ver [`GUIA_GIT.md`](GUIA_GIT.md) para el detalle
-de los commits sugeridos de cada entrega).
+commit de la Kata de Ae4 y el ciclo prueba verde → cambio pequeño →
+prueba verde → commit de las seis refactorizaciones de Ae5 (ver
+[`GUIA_GIT.md`](GUIA_GIT.md) para el detalle de los commits de cada
+entrega). Cada commit de Ae5 describe, en su propio mensaje, el problema
+de diseño que resuelve, el cambio aplicado, las pruebas que lo protegen
+y el estado de la suite tras el cambio.
 
 ## Evidencias
 
@@ -310,6 +450,13 @@ de los commits sugeridos de cada entrega).
 - Diagrama UML actualizado (Ae3 — Incremento 1): [`docs/uml-incremento1.svg`](docs/uml-incremento1.svg) / [`docs/uml-incremento1.png`](docs/uml-incremento1.png).
 - Evidencia de pruebas: salida de `mvn clean test` (BUILD SUCCESS) y verificación manual descrita arriba.
 - Evidencia de la Kata de refactorización (Ae4): [`docs/ae4-evidencias/`](docs/ae4-evidencias/) (línea base antes/después y `git log`).
+- Evidencia de Ae5: [`docs/ae5-evidencias/`](docs/ae5-evidencias/):
+  - `01`–`07`: la suite completa ejecutada sobre **cada commit** del historial (siempre verde).
+  - `07-linea-base-recibos-ae5.txt`: el harness de Ae4 re-ejecutado contra el código final, sin diferencias.
+  - `codigo-antes/` y `codigo-despues/`: las clases afectadas en su estado inicial y final.
+  - `diff-src-main-ae4-vs-ae5.patch` y `diff-resumen-ae4-vs-ae5.txt`: el cambio completo de `src/main`.
+  - `git-log-ae5.txt` y `git-log-ae5-detallado.txt`: el historial con los mensajes completos.
+  - `parches/`: los 7 commits como parches aplicables con `git am`.
 - Documento de análisis y diseño entregado en Blackboard (PDF) de Ae1, Ae3 y Ae4, con las secciones de análisis, diseño OO, cohesión/acoplamiento, principios SOLID, patrones/refactorización, UML y conclusiones.
 
 ## Uso de inteligencia artificial
@@ -328,6 +475,19 @@ cada prueba y de cada refactorización) y puedo explicar y justificar el
 código y las decisiones presentadas en cada entrega, incluyendo por qué
 se descartó Builder en Ae3 y por qué se priorizó cada refactorización de
 Ae4 en el orden elegido.
+
+En Ae5 utilicé asistencia de IA para: ampliar la suite hasta convertirla
+en una red de seguridad de caracterización a partir del comportamiento
+que yo definí como el que debía preservarse, redactar las clases y las
+pruebas de las seis refactorizaciones que seleccioné, construir el
+ejecutor offline que permitió mantener el ciclo de verificación sin
+acceso a Maven Central, y redactar la documentación (tabla de
+refactorizaciones, comparación antes/después y reporte técnico). La
+selección de los problemas de diseño a atacar, el orden de las
+refactorizaciones, la decisión de conservar `double` en `Dinero` y la de
+no corregir el defecto latente detectado en `publicarHorario` son
+decisiones mías, y puedo justificarlas junto con cada línea del código
+y de las pruebas entregadas.
 
 ## Autor
 

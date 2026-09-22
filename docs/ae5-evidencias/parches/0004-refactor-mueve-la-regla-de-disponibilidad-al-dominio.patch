@@ -1,0 +1,312 @@
+From 79024767adbf4ae37c25954cd2013c1e7ea70f22 Mon Sep 17 00:00:00 2001
+From: Luis Saa <saaluis2242@gmail.com>
+Date: Mon, 21 Sep 2026 22:08:52 -0500
+Subject: [PATCH 4/7] refactor: mueve la regla de disponibilidad al dominio con
+ guard clauses
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Problema de diseño: ServicioReservas validaba reglas que pertenecen al
+dominio. En solicitarReserva preguntaba horario.isDisponible() y, si la
+respuesta era afirmativa, llamaba a horario.marcarOcupado(): la pregunta
+y la accion quedaban separadas, el servicio conocia una regla del
+Horario y cualquier otro cliente podia olvidar la pregunta. En
+reprogramarReserva comprobaba la disponibilidad del nuevo horario antes
+de delegar en Reserva.reprogramar, de modo que reprogramar por otra via
+salteaba la validacion.
+
+Cambio:
+- Horario.reservar(): valida y ocupa en una sola operacion indivisible,
+  con guard clause y el mismo mensaje que emitia el servicio.
+- Reserva.reprogramar(): concentra sus tres validaciones como guard
+  clauses al inicio; ninguna mutacion ocurre antes de que todas pasen
+  (antes, un horario nulo liberaba el horario anterior y recien despues
+  fallaba, dejando la reserva a medio camino).
+- ServicioReservas pierde ambos bloques condicionales y queda solo con
+  orquestacion.
+
+Pruebas que protegen el cambio: ServicioReservasCaracterizacionTest
+(mensajes exactos de ambos rechazos, ausencia de eventos publicados y
+reserva intacta tras el rechazo) y ServicioReservasTest de Ae4
+(noSePuedeReservarUnHorarioYaOcupado, reprogramarReserva...). Se agregan
+pruebas de Horario.reservar() y de la atomicidad de reprogramar.
+
+Suite: 66 pruebas, 66 correctas.
+---
+ ...-suite-verde-move-method-guard-clauses.txt | 92 +++++++++++++++++++
+ .../edu/uees/tutorias/domain/Horario.java     | 25 +++++
+ .../edu/uees/tutorias/domain/Reserva.java     | 20 +++-
+ .../tutorias/service/ServicioReservas.java    |  8 +-
+ .../edu/uees/tutorias/domain/HorarioTest.java | 19 ++++
+ .../edu/uees/tutorias/domain/ReservaTest.java | 27 ++++++
+ 6 files changed, 183 insertions(+), 8 deletions(-)
+ create mode 100644 docs/ae5-evidencias/03-suite-verde-move-method-guard-clauses.txt
+
+diff --git a/docs/ae5-evidencias/03-suite-verde-move-method-guard-clauses.txt b/docs/ae5-evidencias/03-suite-verde-move-method-guard-clauses.txt
+new file mode 100644
+index 0000000..16660ec
+--- /dev/null
++++ b/docs/ae5-evidencias/03-suite-verde-move-method-guard-clauses.txt
+@@ -0,0 +1,92 @@
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++=== ServicioReservasCaracterizacionTest ===
++  [OK]   cadaCambioDeEstadoPublicaSuEventoEnOrden
++  [OK]   laObservacionDeLaPoliticaSeAnexaAlMotivoEntreCorchetes
++  [OK]   laReservaSolicitadaQuedaPersistidaYSePuedeRecuperarPorId
++  [OK]   operarSobreUnaReservaInexistenteFallaConSuMensaje
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaConSuMensajeYNoAlteraLaReserva
++  [OK]   sinObservacionLaNotaEsExactamenteElMotivo
++  [OK]   solicitarUnHorarioOcupadoFallaConSuMensajeYSinPublicarEventos
++  [OK]   unaCancelacionRechazadaPorLaPoliticaNoCambiaElEstadoNiPublicaEvento
++
++=== ServicioReservasTest ===
++  [OK]   agregarObservadorEnTiempoDeEjecucionRecibeEventosPosteriores
++  [OK]   cancelarReservaConPoliticaEstandarLiberaElHorarioSinObservaciones
++  [OK]   cancelarReservaCuyoHorarioYaPasoEsRechazadaPorLaPolitica
++  [OK]   cancelarReservaTardiaQuedaMarcadaPorLaPoliticaConAntelacion
++  [OK]   confirmarReservaCambiaSuEstadoYPublicaEvento
++  [OK]   noSePuedeReservarUnHorarioYaOcupado
++  [OK]   reprogramarReservaCambiaElHorarioAsociadoYPublicaEvento
++  [OK]   solicitarReservaDejaElHorarioOcupadoYPublicaEvento
++
++=== AgendaDocenteTest ===
++  [OK]   laColeccionExpuestaNoSePuedeModificarDesdeAfuera
++  [OK]   publicaLosHorariosEnOrden
++  [OK]   rechazaUnHorarioSolapadoSinAgregarlo
++  [OK]   unaAgendaNuevaEstaVacia
++
++=== CorreoTest ===
++  [OK]   dosCorreosConElMismoValorSonIguales
++  [OK]   elCorreoSabeSeparaseEnUsuarioYDominio
++  [OK]   unCorreoNoPuedeExistirInvalido
++  [OK]   unCorreoValidoConservaSuTexto
++
++=== DocenteTest ===
++  [OK]   dosHorariosConsecutivosNoSeConsideranSolapados
++  [OK]   laAgendaExpuestaEsDeSoloLectura
++  [OK]   losHorariosSePublicanYSeConservanEnOrden
++  [OK]   unDocenteNuevoNoTieneHorariosPublicados
++  [OK]   unHorarioQueSeSolapaConOtroYaPublicadoEsRechazado
++
++=== HorarioTest ===
++  [OK]   dosHorariosConElMismoIntervaloSonIguales
++  [OK]   dosHorariosQueComparteMinutosSeSolapan
++  [OK]   elTextoDeUnHorarioEsElQueUsaElRecibo
++  [OK]   ocuparDosVecesElMismoHorarioEsUnError
++  [OK]   ocuparUnHorarioLoDejaNoDisponibleYLiberarloLoDevuelveADisponible
++  [OK]   reservarUnHorarioDisponibleLoOcupa
++  [OK]   reservarUnHorarioYaTomadoFallaConElMensajeQueEmitiaElServicio
++  [OK]   unHorarioCuyoFinNoEsPosteriorAlInicioEsRechazado
++  [OK]   unHorarioNaceDisponible
++
++=== ReservaTest ===
++  [OK]   cancelarLiberaElHorarioYGuardaElMotivo
++  [OK]   cancelarSinMotivoDejaLasNotasVacias
++  [OK]   reprogramarHaciaUnHorarioNuloFallaSinLiberarElHorarioActual
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaSinAlterarLaReserva
++  [OK]   reprogramarLiberaElHorarioAnteriorYOcupaElNuevo
++  [OK]   soloUnaReservaConfirmadaPuedeCompletarse
++  [OK]   soloUnaReservaSolicitadaPuedeConfirmarse
++  [OK]   unaReservaCompletadaNoPuedeCancelarse
++  [OK]   unaReservaExigeEstudianteDocenteYHorario
++  [OK]   unaReservaNaceSolicitadaConIdYSinNotas
++  [OK]   unaReservaYaCanceladaNoPuedeCancelarseNiReprogramarse
++
++=== UsuarioTest ===
++  [OK]   cadaTipoDeUsuarioDescribeSuPropioRol
++  [OK]   dosUsuariosConElMismoIdSonElMismoUsuario
++  [OK]   elCanalPreferidoPorDefectoEsEmailYPuedeCambiarse
++  [OK]   elCodigoEstudiantilEsObligatorio
++  [OK]   elCorreoSeLeeDeVueltaComoElMismoTexto
++  [OK]   laEspecialidadDelDocenteEsObligatoria
++  [OK]   unCorreoNuloEsRechazado
++  [OK]   unCorreoSinArrobaEsRechazadoConElMismoMensajeDeSiempre
++  [OK]   unNombreEnBlancoEsRechazado
++
++=== NotificadorCreatorFactoryTest ===
++  [OK]   devuelveElCreadorCorrectoParaCadaCanal
++[EMAIL] Para: Luis Perez <luis@uees.edu.ec> | Mensaje: mensaje de prueba
++  [OK]   elCreadorObtenidoPuedeNotificarSinConocerLaClaseConcreta
++
++=== GeneradorReciboReservaTest ===
++  [OK]   reciboDeUnaReservaCanceladaNoCobraYMuestraElMotivo
++  [OK]   reciboDeUnaReservaCompletadaConCodigoUeesAplicaDescuentoDeFidelidad
++  [OK]   reciboDeUnaReservaCompletadaSinCodigoUeesNoAplicaDescuento
++  [OK]   reciboDeUnaReservaConfirmadaCobraElPrecioBase
++  [OK]   reciboDeUnaReservaReprogramadaAplicaDiezPorCientoDeDescuento
++  [OK]   reciboDeUnaReservaSolicitadaCobraElPrecioBase
++
++-----------------------------------------------
++Pruebas ejecutadas: 66, correctas: 66, fallidas: 0
++RESULTADO: SUITE VERDE
+diff --git a/src/main/java/edu/uees/tutorias/domain/Horario.java b/src/main/java/edu/uees/tutorias/domain/Horario.java
+index 6de35ed..47f1322 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Horario.java
++++ b/src/main/java/edu/uees/tutorias/domain/Horario.java
+@@ -39,6 +39,31 @@ public class Horario {
+         return disponible;
+     }
+ 
++    /**
++     * Toma este horario para una reserva: comprueba que siga disponible
++     * y lo ocupa en una sola operacion.
++     *
++     * <p>Refactorizacion 3 de Ae5 (Move Method): esta comprobacion vivia
++     * en {@code ServicioReservas.solicitarReserva}, que preguntaba
++     * {@code isDisponible()} y, si la respuesta era afirmativa, llamaba a
++     * {@code marcarOcupado()}. Eso obligaba al servicio a conocer la
++     * regla del horario y dejaba la pregunta y la accion separadas, de
++     * modo que cualquier otro cliente podia olvidar la pregunta u operar
++     * sobre un estado ya cambiado. La regla pertenece al objeto que
++     * posee el dato, y aqui queda como una sola decision indivisible,
++     * escrita con guard clause: se valida primero y solo despues se
++     * muta el estado.</p>
++     *
++     * <p>El mensaje del error es exactamente el que emitia el servicio,
++     * para no alterar el comportamiento observable.</p>
++     */
++    public void reservar() {
++        if (!disponible) {
++            throw new IllegalStateException("El horario seleccionado ya no esta disponible");
++        }
++        this.disponible = false;
++    }
++
+     /** Solo el propio Horario decide si puede marcarse como ocupado. */
+     public void marcarOcupado() {
+         if (!disponible) {
+diff --git a/src/main/java/edu/uees/tutorias/domain/Reserva.java b/src/main/java/edu/uees/tutorias/domain/Reserva.java
+index 6270c95..5672405 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Reserva.java
++++ b/src/main/java/edu/uees/tutorias/domain/Reserva.java
+@@ -48,12 +48,30 @@ public class Reserva {
+         this.notas = motivo == null ? "" : motivo;
+     }
+ 
++    /**
++     * Reprograma la reserva a un nuevo horario disponible.
++     *
++     * <p>Refactorizacion 3 de Ae5 (Move Method + Guard Clauses): la
++     * comprobacion de que el nuevo horario estuviera disponible la hacia
++     * {@code ServicioReservas.reprogramarReserva} antes de llamar a este
++     * metodo. Era una regla del dominio viviendo en la capa de
++     * aplicacion: quien reprogramara una reserva por otra via podia
++     * omitirla. Ahora las tres condiciones se validan aqui, como guard
++     * clauses, y ninguna mutacion ocurre antes de que todas pasen; antes,
++     * un nuevo horario nulo liberaba el horario anterior y recien
++     * despues fallaba, dejando la reserva a medio camino.</p>
++     */
+     public void reprogramar(Horario nuevoHorario) {
+         if (estado == EstadoReserva.CANCELADA || estado == EstadoReserva.COMPLETADA) {
+             throw new IllegalStateException("La reserva ya no puede reprogramarse en su estado actual");
+         }
++        Objects.requireNonNull(nuevoHorario, "El nuevo horario es obligatorio");
++        if (!nuevoHorario.isDisponible()) {
++            throw new IllegalStateException("El nuevo horario no esta disponible");
++        }
++
+         horario.liberar();
+-        this.horario = Objects.requireNonNull(nuevoHorario, "El nuevo horario es obligatorio");
++        this.horario = nuevoHorario;
+         nuevoHorario.marcarOcupado();
+         this.estado = EstadoReserva.REPROGRAMADA;
+     }
+diff --git a/src/main/java/edu/uees/tutorias/service/ServicioReservas.java b/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
+index c0f8315..1c86ecf 100644
+--- a/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
++++ b/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
+@@ -56,10 +56,7 @@ public class ServicioReservas {
+     }
+ 
+     public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
+-        if (!horario.isDisponible()) {
+-            throw new IllegalStateException("El horario seleccionado ya no esta disponible");
+-        }
+-        horario.marcarOcupado();
++        horario.reservar();
+         Reserva reserva = new Reserva(estudiante, docente, horario);
+         repositorio.guardar(reserva);
+ 
+@@ -93,9 +90,6 @@ public class ServicioReservas {
+ 
+     public void reprogramarReserva(String reservaId, Horario nuevoHorario) {
+         Reserva reserva = obtenerReserva(reservaId);
+-        if (!nuevoHorario.isDisponible()) {
+-            throw new IllegalStateException("El nuevo horario no esta disponible");
+-        }
+         reserva.reprogramar(nuevoHorario);
+         repositorio.guardar(reserva);
+         publicar(reserva, "REPROGRAMADA");
+diff --git a/src/test/java/edu/uees/tutorias/domain/HorarioTest.java b/src/test/java/edu/uees/tutorias/domain/HorarioTest.java
+index d30ba7f..c462ae2 100644
+--- a/src/test/java/edu/uees/tutorias/domain/HorarioTest.java
++++ b/src/test/java/edu/uees/tutorias/domain/HorarioTest.java
+@@ -57,6 +57,25 @@ class HorarioTest {
+         assertEquals("El horario ya se encuentra ocupado", error.getMessage());
+     }
+ 
++    @Test
++    void reservarUnHorarioDisponibleLoOcupa() {
++        Horario horario = new Horario(INICIO, FIN);
++
++        horario.reservar();
++
++        assertFalse(horario.isDisponible());
++    }
++
++    @Test
++    void reservarUnHorarioYaTomadoFallaConElMensajeQueEmitiaElServicio() {
++        Horario horario = new Horario(INICIO, FIN);
++        horario.reservar();
++
++        IllegalStateException error = assertThrows(IllegalStateException.class, horario::reservar);
++
++        assertEquals("El horario seleccionado ya no esta disponible", error.getMessage());
++    }
++
+     @Test
+     void dosHorariosQueComparteMinutosSeSolapan() {
+         Horario diezAOnce = new Horario(INICIO, FIN);
+diff --git a/src/test/java/edu/uees/tutorias/domain/ReservaTest.java b/src/test/java/edu/uees/tutorias/domain/ReservaTest.java
+index b02b305..8aa79d0 100644
+--- a/src/test/java/edu/uees/tutorias/domain/ReservaTest.java
++++ b/src/test/java/edu/uees/tutorias/domain/ReservaTest.java
+@@ -110,6 +110,33 @@ class ReservaTest {
+         assertFalse(nuevo.isDisponible());
+     }
+ 
++    @Test
++    void reprogramarHaciaUnHorarioOcupadoFallaSinAlterarLaReserva() {
++        horario.marcarOcupado();
++        Reserva reserva = new Reserva(estudiante, docente, horario);
++        Horario ocupado = otroHorario();
++        ocupado.marcarOcupado();
++
++        IllegalStateException error = assertThrows(IllegalStateException.class,
++                () -> reserva.reprogramar(ocupado));
++
++        assertEquals("El nuevo horario no esta disponible", error.getMessage());
++        assertEquals(EstadoReserva.SOLICITADA, reserva.getEstado());
++        assertEquals(horario, reserva.getHorario());
++        assertFalse(horario.isDisponible());
++    }
++
++    @Test
++    void reprogramarHaciaUnHorarioNuloFallaSinLiberarElHorarioActual() {
++        horario.marcarOcupado();
++        Reserva reserva = new Reserva(estudiante, docente, horario);
++
++        assertThrows(NullPointerException.class, () -> reserva.reprogramar(null));
++
++        assertFalse(horario.isDisponible());
++        assertEquals(EstadoReserva.SOLICITADA, reserva.getEstado());
++    }
++
+     @Test
+     void soloUnaReservaConfirmadaPuedeCompletarse() {
+         Reserva reserva = new Reserva(estudiante, docente, horario);
+-- 
+2.43.0
+

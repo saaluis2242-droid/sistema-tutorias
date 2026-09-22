@@ -1,0 +1,749 @@
+diff --git a/src/main/java/edu/uees/tutorias/app/Main.java b/src/main/java/edu/uees/tutorias/app/Main.java
+index c05f841..c076a89 100644
+--- a/src/main/java/edu/uees/tutorias/app/Main.java
++++ b/src/main/java/edu/uees/tutorias/app/Main.java
+@@ -5,6 +5,7 @@ import edu.uees.tutorias.domain.Docente;
+ import edu.uees.tutorias.domain.Estudiante;
+ import edu.uees.tutorias.domain.Horario;
+ import edu.uees.tutorias.domain.Reserva;
++import edu.uees.tutorias.domain.SolicitudTutoria;
+ import edu.uees.tutorias.notification.observer.NotificadorObservador;
+ import edu.uees.tutorias.notification.observer.ObservadorReserva;
+ import edu.uees.tutorias.notification.observer.RegistroAuditoriaObservador;
+@@ -50,7 +51,8 @@ public class Main {
+                 observadores
+         );
+ 
+-        Reserva reserva = servicio.solicitarReserva(estudiante, docente, horarioLunes);
++        Reserva reserva = servicio.solicitarReserva(
++                new SolicitudTutoria(estudiante, docente, horarioLunes));
+         System.out.println("Estado inicial: " + reserva.getEstado());
+ 
+         servicio.confirmarReserva(reserva.getId());
+@@ -66,8 +68,8 @@ public class Main {
+         // Cancelacion de ultima hora: la nueva reserva quedo para el 2026-09-01,
+         // asi que "ahora" (fecha de esta demo) esta a menos de 24h -> la
+         // PoliticaCancelacionConAntelacion debe marcarla como tardia.
+-        Reserva reservaTardia = servicio.solicitarReserva(estudiante, docente,
+-                new Horario(LocalDateTime.now().plusHours(2), LocalDateTime.now().plusHours(3)));
++        Reserva reservaTardia = servicio.solicitarReserva(new SolicitudTutoria(estudiante, docente,
++                new Horario(LocalDateTime.now().plusHours(2), LocalDateTime.now().plusHours(3))));
+         servicio.cancelarReserva(reservaTardia.getId(), "El estudiante ya no puede asistir");
+         System.out.println("Notas de la cancelacion tardia: " + reservaTardia.getNotas());
+ 
+diff --git a/src/main/java/edu/uees/tutorias/domain/AgendaDocente.java b/src/main/java/edu/uees/tutorias/domain/AgendaDocente.java
+new file mode 100644
+index 0000000..ad1fb87
+--- /dev/null
++++ b/src/main/java/edu/uees/tutorias/domain/AgendaDocente.java
+@@ -0,0 +1,62 @@
++package edu.uees.tutorias.domain;
++
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.List;
++
++/**
++ * Agenda de disponibilidad de un docente: la coleccion de horarios
++ * publicados y la regla que impide que dos de ellos se solapen.
++ *
++ * <p>Problema de diseño que resuelve (Refactorizacion 2 de Ae5):
++ * {@link Docente} tenia dos razones de cambio conviviendo en la misma
++ * clase. Por un lado era un {@link Usuario} (identidad, nombre, correo,
++ * canal preferido, rol); por otro administraba una estructura de datos
++ * con su propia regla de negocio (la lista de horarios, la validacion de
++ * solapamiento y la exposicion de solo lectura). Cualquier evolucion de
++ * la agenda -- buscar el proximo horario libre, limitar cupos por
++ * semana, retirar un horario ya publicado, replicar la agenda de una
++ * semana -- habria engordado a Docente sin relacion con lo que hace a un
++ * docente ser un usuario del sistema.</p>
++ *
++ * <p>Al extraer la clase, cada una queda con una unica razon de cambio:
++ * Docente representa a la persona y delega en su agenda; AgendaDocente
++ * es el lugar natural donde crecen las reglas de disponibilidad, y puede
++ * probarse sin construir un Docente completo.</p>
++ *
++ * <p>El comportamiento observable no cambia: se sigue rechazando un
++ * horario solapado con {@link IllegalStateException} y el mismo mensaje,
++ * se conserva el orden de publicacion y la coleccion expuesta sigue
++ * siendo inmodificable.</p>
++ */
++public class AgendaDocente {
++
++    private final List<Horario> horarios = new ArrayList<>();
++
++    /** Horarios publicados, en orden de publicacion y de solo lectura. */
++    public List<Horario> getHorarios() {
++        return Collections.unmodifiableList(horarios);
++    }
++
++    /**
++     * Publica un nuevo horario, evitando que se solape con uno existente.
++     *
++     * <p>Nota de disciplina de refactorizacion: al mover este metodo se
++     * detecto que no valida el nulo (publicar(null) sobre una agenda
++     * vacia lo agregaria a la lista). Ese defecto latente se dejo tal
++     * como estaba a proposito: una refactorizacion no debe corregir
++     * comportamiento, solo estructura. Queda registrado como trabajo
++     * pendiente, con su propia prueba, para un cambio posterior que si
++     * sea un cambio funcional declarado.</p>
++     */
++    public void publicar(Horario horario) {
++        if (seSolapaConAlguno(horario)) {
++            throw new IllegalStateException("El horario se solapa con uno ya publicado");
++        }
++        horarios.add(horario);
++    }
++
++    private boolean seSolapaConAlguno(Horario horario) {
++        return horarios.stream().anyMatch(publicado -> publicado.seSolapaCon(horario));
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/domain/Correo.java b/src/main/java/edu/uees/tutorias/domain/Correo.java
+new file mode 100644
+index 0000000..fbc951f
+--- /dev/null
++++ b/src/main/java/edu/uees/tutorias/domain/Correo.java
+@@ -0,0 +1,50 @@
++package edu.uees.tutorias.domain;
++
++/**
++ * Value Object que representa una direccion de correo electronico valida.
++ *
++ * <p>Problema de diseño que resuelve (Refactorizacion 1 de Ae5):
++ * {@link Usuario} guardaba el correo como un {@code String} y validaba
++ * su forma en un metodo privado ({@code validarCorreo}). Eso es
++ * <em>Primitive Obsession</em>: el tipo del atributo no dice nada sobre
++ * la regla que lo hace valido, la validacion vive lejos del dato y
++ * cualquier otra clase que reciba un {@code String} "correo" no tiene
++ * forma de saber si ya fue validado. Con el tiempo, la misma regla
++ * (contener una arroba, y mañana el dominio institucional o la
++ * normalizacion a minusculas) se habria duplicado en cada punto de
++ * entrada.</p>
++ *
++ * <p>Al convertirlo en Value Object, la regla queda en un solo lugar y
++ * se aplica en el momento de construir el valor: si existe una
++ * instancia de {@code Correo}, es valida por construccion, y el propio
++ * tipo lo comunica en cada firma donde aparece. Es inmutable y su
++ * identidad es su valor, no una referencia (de ahi {@code record}).</p>
++ *
++ * <p>El comportamiento observable no cambia: se sigue rechazando un
++ * correo nulo o sin arroba con {@link IllegalArgumentException} y con el
++ * mismo mensaje, y {@code toString()} devuelve el texto original, de modo
++ * que los notificadores que lo interpolan siguen imprimiendo lo mismo.</p>
++ */
++public record Correo(String valor) {
++
++    public Correo {
++        if (valor == null || !valor.contains("@")) {
++            throw new IllegalArgumentException("El correo del usuario no es valido");
++        }
++    }
++
++    /** Parte local del correo (lo que precede a la arroba). */
++    public String usuario() {
++        return valor.substring(0, valor.indexOf('@'));
++    }
++
++    /** Dominio del correo (lo que sigue a la arroba). */
++    public String dominio() {
++        return valor.substring(valor.indexOf('@') + 1);
++    }
++
++    @Override
++    public String toString() {
++        return valor;
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/domain/Dinero.java b/src/main/java/edu/uees/tutorias/domain/Dinero.java
+new file mode 100644
+index 0000000..6ac752b
+--- /dev/null
++++ b/src/main/java/edu/uees/tutorias/domain/Dinero.java
+@@ -0,0 +1,36 @@
++package edu.uees.tutorias.domain;
++
++/**
++ * Value Object que representa un importe monetario.
++ *
++ * <p>Problema de diseño que resuelve (Refactorizacion 6 de Ae5): el
++ * precio de una tutoria circulaba como un {@code double} suelto. Nada
++ * distinguia ese numero de una cantidad de horas o de un porcentaje, el
++ * formato con el que se imprime ("$15.0") estaba escrito a mano en el
++ * generador de recibos, y la operacion "descontar un porcentaje" se
++ * repetia como la expresion {@code precio - (precio * descuento)} en dos
++ * ramas distintas del calculo.</p>
++ *
++ * <p>Como Value Object, el importe lleva consigo su formato y su unica
++ * operacion de negocio. Se conserva deliberadamente {@code double} como
++ * representacion interna, y la expresion aritmetica exacta que ya
++ * existia, para que el total impreso no cambie ni en el ultimo decimal:
++ * el objetivo de esta refactorizacion es reubicar responsabilidades, no
++ * corregir el tipo numerico. Migrar a {@code BigDecimal} es un cambio de
++ * comportamiento y queda registrado como trabajo posterior.</p>
++ */
++public record Dinero(double monto) {
++
++    public static final Dinero CERO = new Dinero(0.0);
++
++    /** Aplica un descuento expresado como fraccion (0.1 = 10%). */
++    public Dinero menosDescuento(double fraccion) {
++        return new Dinero(monto - (monto * fraccion));
++    }
++
++    /** Formato con el que el importe aparece en el recibo. */
++    @Override
++    public String toString() {
++        return "$" + monto;
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/domain/Docente.java b/src/main/java/edu/uees/tutorias/domain/Docente.java
+index f9e7ce6..e388ba8 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Docente.java
++++ b/src/main/java/edu/uees/tutorias/domain/Docente.java
+@@ -1,22 +1,26 @@
+ package edu.uees.tutorias.domain;
+ 
+-import java.util.ArrayList;
+-import java.util.Collections;
+ import java.util.List;
+ 
+ /**
+  * Docente que publica y administra su propia disponibilidad de horarios.
+  *
+- * La lista de horarios es una composicion: los Horario de un Docente
+- * viven y mueren con el (si se elimina el Docente, sus horarios dejan
+- * de tener sentido). Por eso la coleccion se expone solo de lectura y
+- * las reglas de publicacion (no solapar horarios) las protege esta
+- * misma clase.
++ * La agenda es una composicion: los Horario de un Docente viven y mueren
++ * con el (si se elimina el Docente, sus horarios dejan de tener
++ * sentido).
++ *
++ * <p>Refactorizacion 2 de Ae5 (Extract Class): la lista de horarios y la
++ * regla de no solapamiento vivian aqui, mezclando la identidad del
++ * usuario con la administracion de una estructura de datos de negocio.
++ * Ahora esa responsabilidad es de {@link AgendaDocente} y esta clase
++ * delega en ella, conservando la misma interfaz publica
++ * ({@code publicarHorario}, {@code getHorarios}) para no afectar a
++ * ningun cliente.</p>
+  */
+ public class Docente extends Usuario {
+ 
+     private final String especialidad;
+-    private final List<Horario> horarios = new ArrayList<>();
++    private final AgendaDocente agenda = new AgendaDocente();
+ 
+     public Docente(String id, String nombre, String correo, String especialidad) {
+         super(id, nombre, correo);
+@@ -30,17 +34,18 @@ public class Docente extends Usuario {
+         return especialidad;
+     }
+ 
++    /** Agenda del docente, para operar sobre su disponibilidad directamente. */
++    public AgendaDocente getAgenda() {
++        return agenda;
++    }
++
+     public List<Horario> getHorarios() {
+-        return Collections.unmodifiableList(horarios);
++        return agenda.getHorarios();
+     }
+ 
+     /** Publica un nuevo horario, evitando que se solape con uno existente. */
+     public void publicarHorario(Horario horario) {
+-        boolean seSolapa = horarios.stream().anyMatch(h -> h.seSolapaCon(horario));
+-        if (seSolapa) {
+-            throw new IllegalStateException("El horario se solapa con uno ya publicado");
+-        }
+-        horarios.add(horario);
++        agenda.publicar(horario);
+     }
+ 
+     @Override
+diff --git a/src/main/java/edu/uees/tutorias/domain/Horario.java b/src/main/java/edu/uees/tutorias/domain/Horario.java
+index 6de35ed..47f1322 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Horario.java
++++ b/src/main/java/edu/uees/tutorias/domain/Horario.java
+@@ -39,6 +39,31 @@ public class Horario {
+         return disponible;
+     }
+ 
++    /**
++     * Toma este horario para una reserva: comprueba que siga disponible
++     * y lo ocupa en una sola operacion.
++     *
++     * <p>Refactorizacion 3 de Ae5 (Move Method): esta comprobacion vivia
++     * en {@code ServicioReservas.solicitarReserva}, que preguntaba
++     * {@code isDisponible()} y, si la respuesta era afirmativa, llamaba a
++     * {@code marcarOcupado()}. Eso obligaba al servicio a conocer la
++     * regla del horario y dejaba la pregunta y la accion separadas, de
++     * modo que cualquier otro cliente podia olvidar la pregunta u operar
++     * sobre un estado ya cambiado. La regla pertenece al objeto que
++     * posee el dato, y aqui queda como una sola decision indivisible,
++     * escrita con guard clause: se valida primero y solo despues se
++     * muta el estado.</p>
++     *
++     * <p>El mensaje del error es exactamente el que emitia el servicio,
++     * para no alterar el comportamiento observable.</p>
++     */
++    public void reservar() {
++        if (!disponible) {
++            throw new IllegalStateException("El horario seleccionado ya no esta disponible");
++        }
++        this.disponible = false;
++    }
++
+     /** Solo el propio Horario decide si puede marcarse como ocupado. */
+     public void marcarOcupado() {
+         if (!disponible) {
+diff --git a/src/main/java/edu/uees/tutorias/domain/Reserva.java b/src/main/java/edu/uees/tutorias/domain/Reserva.java
+index 6270c95..3dd9cb5 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Reserva.java
++++ b/src/main/java/edu/uees/tutorias/domain/Reserva.java
+@@ -23,15 +23,33 @@ public class Reserva {
+     private EstadoReserva estado;
+     private String notas;
+ 
+-    public Reserva(Estudiante estudiante, Docente docente, Horario horario) {
++    /**
++     * Crea una reserva a partir de la solicitud que la origina.
++     *
++     * <p>Refactorizacion 5 de Ae5 (agrupar Data Clump): este
++     * constructor recibia los tres datos por separado y los validaba uno
++     * a uno. Ahora la validacion del trio es responsabilidad de
++     * {@link SolicitudTutoria} y este constructor solo copia lo que ya
++     * es valido.</p>
++     */
++    public Reserva(SolicitudTutoria solicitud) {
++        Objects.requireNonNull(solicitud, "La solicitud es obligatoria");
+         this.id = UUID.randomUUID().toString();
+-        this.estudiante = Objects.requireNonNull(estudiante, "El estudiante es obligatorio");
+-        this.docente = Objects.requireNonNull(docente, "El docente es obligatorio");
+-        this.horario = Objects.requireNonNull(horario, "El horario es obligatorio");
++        this.estudiante = solicitud.estudiante();
++        this.docente = solicitud.docente();
++        this.horario = solicitud.horario();
+         this.estado = EstadoReserva.SOLICITADA;
+         this.notas = "";
+     }
+ 
++    /**
++     * Sobrecarga conservada por compatibilidad con el codigo de Ae1-Ae4:
++     * delega en el constructor basado en {@link SolicitudTutoria}.
++     */
++    public Reserva(Estudiante estudiante, Docente docente, Horario horario) {
++        this(new SolicitudTutoria(estudiante, docente, horario));
++    }
++
+     public void confirmar() {
+         if (estado != EstadoReserva.SOLICITADA) {
+             throw new IllegalStateException("Solo una reserva solicitada puede confirmarse");
+@@ -48,12 +66,30 @@ public class Reserva {
+         this.notas = motivo == null ? "" : motivo;
+     }
+ 
++    /**
++     * Reprograma la reserva a un nuevo horario disponible.
++     *
++     * <p>Refactorizacion 3 de Ae5 (Move Method + Guard Clauses): la
++     * comprobacion de que el nuevo horario estuviera disponible la hacia
++     * {@code ServicioReservas.reprogramarReserva} antes de llamar a este
++     * metodo. Era una regla del dominio viviendo en la capa de
++     * aplicacion: quien reprogramara una reserva por otra via podia
++     * omitirla. Ahora las tres condiciones se validan aqui, como guard
++     * clauses, y ninguna mutacion ocurre antes de que todas pasen; antes,
++     * un nuevo horario nulo liberaba el horario anterior y recien
++     * despues fallaba, dejando la reserva a medio camino.</p>
++     */
+     public void reprogramar(Horario nuevoHorario) {
+         if (estado == EstadoReserva.CANCELADA || estado == EstadoReserva.COMPLETADA) {
+             throw new IllegalStateException("La reserva ya no puede reprogramarse en su estado actual");
+         }
++        Objects.requireNonNull(nuevoHorario, "El nuevo horario es obligatorio");
++        if (!nuevoHorario.isDisponible()) {
++            throw new IllegalStateException("El nuevo horario no esta disponible");
++        }
++
+         horario.liberar();
+-        this.horario = Objects.requireNonNull(nuevoHorario, "El nuevo horario es obligatorio");
++        this.horario = nuevoHorario;
+         nuevoHorario.marcarOcupado();
+         this.estado = EstadoReserva.REPROGRAMADA;
+     }
+diff --git a/src/main/java/edu/uees/tutorias/domain/SolicitudTutoria.java b/src/main/java/edu/uees/tutorias/domain/SolicitudTutoria.java
+new file mode 100644
+index 0000000..b4b2dee
+--- /dev/null
++++ b/src/main/java/edu/uees/tutorias/domain/SolicitudTutoria.java
+@@ -0,0 +1,41 @@
++package edu.uees.tutorias.domain;
++
++import java.util.Objects;
++
++/**
++ * Los tres datos que definen una solicitud de tutoria: quien la pide,
++ * con quien y en que bloque de tiempo.
++ *
++ * <p>Problema de diseño que resuelve (Refactorizacion 5 de Ae5): el
++ * trio {@code (estudiante, docente, horario)} viajaba junto por todo el
++ * sistema -- el codigo cliente lo pasaba a
++ * {@code ServicioReservas.solicitarReserva(estudiante, docente, horario)},
++ * que lo pasaba tal cual a {@code new Reserva(estudiante, docente, horario)} --
++ * y cada firma repetia los mismos tres parametros en el mismo orden.
++ * Es un <em>Data Clump</em>: tres datos que nunca aparecen por separado
++ * y que, sin embargo, no tienen nombre como concepto. Sus consecuencias
++ * concretas eran que el orden de los tres argumentos se podia invertir
++ * sin que el compilador dijera nada (dos de ellos son Usuario), que la
++ * validacion de los tres estaba repetida en el constructor de Reserva, y
++ * que agregar un cuarto dato de la solicitud -- modalidad presencial o
++ * virtual, asignatura, motivo -- habria obligado a modificar todas las
++ * firmas de la cadena.</p>
++ *
++ * <p>Al agruparlos en un tipo con nombre propio, la solicitud se valida
++ * una sola vez, al crearse, y pasa a ser el vocabulario del caso de uso:
++ * los metodos reciben "una solicitud de tutoria" en lugar de tres
++ * objetos sueltos. Es inmutable, de ahi el {@code record}.</p>
++ *
++ * <p>Se conservan las firmas anteriores como sobrecargas que delegan en
++ * esta, para no romper a ningun cliente existente: el comportamiento
++ * observable, incluidos los mensajes de los tres requireNonNull, es el
++ * mismo.</p>
++ */
++public record SolicitudTutoria(Estudiante estudiante, Docente docente, Horario horario) {
++
++    public SolicitudTutoria {
++        Objects.requireNonNull(estudiante, "El estudiante es obligatorio");
++        Objects.requireNonNull(docente, "El docente es obligatorio");
++        Objects.requireNonNull(horario, "El horario es obligatorio");
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/domain/Usuario.java b/src/main/java/edu/uees/tutorias/domain/Usuario.java
+index f45c769..4478f4a 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Usuario.java
++++ b/src/main/java/edu/uees/tutorias/domain/Usuario.java
+@@ -10,12 +10,20 @@ import java.util.Objects;
+  * Docente heredan de esta clase porque ambos SON usuarios y comparten
+  * este mismo conjunto de atributos y reglas de validacion; no se trata
+  * de una herencia usada solo para reutilizar codigo.
++ *
++ * <p>Refactorizacion 1 de Ae5 (introducir Value Object): el correo dejo
++ * de ser un {@code String} validado por un metodo privado de esta clase
++ * y paso a ser un {@link Correo}, que se valida a si mismo al
++ * construirse. Usuario ya no tiene que conocer que hace valido a un
++ * correo: solo pide uno. El comportamiento observable es el mismo (un
++ * correo nulo o sin arroba sigue lanzando IllegalArgumentException con
++ * el mismo mensaje, y el texto del correo se lee de vuelta igual).</p>
+  */
+ public abstract class Usuario {
+ 
+     private final String id;
+     private final String nombre;
+-    private final String correo;
++    private final Correo correo;
+     private CanalNotificacion canalPreferido;
+ 
+     protected Usuario(String id, String nombre, String correo) {
+@@ -25,7 +33,7 @@ public abstract class Usuario {
+     protected Usuario(String id, String nombre, String correo, CanalNotificacion canalPreferido) {
+         this.id = Objects.requireNonNull(id, "El id no puede ser nulo");
+         this.nombre = validarNombre(nombre);
+-        this.correo = validarCorreo(correo);
++        this.correo = new Correo(correo);
+         this.canalPreferido = Objects.requireNonNull(canalPreferido, "El canal preferido no puede ser nulo");
+     }
+ 
+@@ -36,13 +44,6 @@ public abstract class Usuario {
+         return nombre;
+     }
+ 
+-    private String validarCorreo(String correo) {
+-        if (correo == null || !correo.contains("@")) {
+-            throw new IllegalArgumentException("El correo del usuario no es valido");
+-        }
+-        return correo;
+-    }
+-
+     public String getId() {
+         return id;
+     }
+@@ -51,7 +52,7 @@ public abstract class Usuario {
+         return nombre;
+     }
+ 
+-    public String getCorreo() {
++    public Correo getCorreo() {
+         return correo;
+     }
+ 
+diff --git a/src/main/java/edu/uees/tutorias/domain/tarifa/TarifarioTutoria.java b/src/main/java/edu/uees/tutorias/domain/tarifa/TarifarioTutoria.java
+new file mode 100644
+index 0000000..6affb73
+--- /dev/null
++++ b/src/main/java/edu/uees/tutorias/domain/tarifa/TarifarioTutoria.java
+@@ -0,0 +1,55 @@
++package edu.uees.tutorias.domain.tarifa;
++
++import edu.uees.tutorias.domain.Dinero;
++import edu.uees.tutorias.domain.EstadoReserva;
++import edu.uees.tutorias.domain.Reserva;
++
++/**
++ * Reglas de cobro de una tutoria: precio base, descuento por
++ * reprogramacion, descuento de fidelidad para estudiantes con codigo
++ * institucional y gratuidad de las reservas canceladas.
++ *
++ * <p>Problema de diseño que resuelve (Refactorizacion 6 de Ae5):
++ * {@code GeneradorReciboReserva} tenia dos razones de cambio. Por un
++ * lado decidia <em>cuanto se cobra</em> (las constantes de precio y
++ * descuento y el switch que las aplica); por otro armaba <em>como se
++ * ve</em> el recibo (los rotulos, los saltos de linea, el orden de las
++ * lineas). Son dos motivos de cambio completamente independientes: que
++ * el area academica cambie el descuento no tiene relacion con que se
++ * agregue una linea al recibo, y sin embargo ambos cambios llegaban al
++ * mismo archivo. Ademas, la regla de precio solo podia probarse leyendo
++ * el texto del recibo, es decir, a traves de su presentacion.</p>
++ *
++ * <p>Al extraer la clase, la regla de cobro queda aislada y verificable
++ * por si misma, y el generador de recibos vuelve a ser lo que su nombre
++ * dice: un formateador.</p>
++ *
++ * <p>El calculo se mantiene identico, con las mismas constantes y la
++ * misma expresion aritmetica, de modo que el total de cada recibo no
++ * cambia.</p>
++ */
++public class TarifarioTutoria {
++
++    private static final Dinero PRECIO_BASE = new Dinero(15.0);
++    private static final double DESCUENTO_REPROGRAMACION = 0.1;
++    private static final double DESCUENTO_FIDELIDAD = 0.2;
++    private static final String PREFIJO_CODIGO_FIDELIDAD = "UEES";
++
++    /** Importe a pagar por una reserva segun su estado actual. */
++    public Dinero calcular(Reserva reserva) {
++        EstadoReserva estado = reserva.getEstado();
++        return switch (estado) {
++            case REPROGRAMADA -> PRECIO_BASE.menosDescuento(DESCUENTO_REPROGRAMACION);
++            case CANCELADA -> Dinero.CERO;
++            case COMPLETADA -> tieneCodigoFidelidad(reserva)
++                    ? PRECIO_BASE.menosDescuento(DESCUENTO_FIDELIDAD)
++                    : PRECIO_BASE;
++            case SOLICITADA, CONFIRMADA -> PRECIO_BASE;
++        };
++    }
++
++    private boolean tieneCodigoFidelidad(Reserva reserva) {
++        String codigo = reserva.getEstudiante().getCodigoEstudiantil();
++        return codigo != null && codigo.startsWith(PREFIJO_CODIGO_FIDELIDAD);
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/reporte/GeneradorReciboReserva.java b/src/main/java/edu/uees/tutorias/reporte/GeneradorReciboReserva.java
+index f3a796d..2724160 100644
+--- a/src/main/java/edu/uees/tutorias/reporte/GeneradorReciboReserva.java
++++ b/src/main/java/edu/uees/tutorias/reporte/GeneradorReciboReserva.java
+@@ -1,62 +1,54 @@
+ package edu.uees.tutorias.reporte;
+ 
++import edu.uees.tutorias.domain.Dinero;
+ import edu.uees.tutorias.domain.EstadoReserva;
+ import edu.uees.tutorias.domain.Reserva;
++import edu.uees.tutorias.domain.tarifa.TarifarioTutoria;
+ 
+ /**
+- * Genera el texto del recibo de una tutoria.
++ * Compone el texto del recibo de una tutoria.
+  *
+- * Refactorizacion 4 (Simplify Conditional): {@code calcularPrecio} y
+- * {@code construirLineaEstado} comparaban {@code reserva.getEstado().toString()}
+- * contra literales de texto ("REPROGRAMADA", "CANCELADA", "COMPLETADA")
+- * con if/else anidados en tres niveles. Eso duplicaba, con texto suelto,
+- * una informacion que ya existe como tipo en el dominio: el enum
+- * {@link EstadoReserva}. Se reemplazaron ambas cadenas de if/else por un
+- * {@code switch} sobre el enum (sin comparar Strings) y se aplano el
+- * anidamiento. El resultado de cada caso es exactamente el mismo que
+- * antes.
++ * <p>Refactorizacion 6 de Ae5 (Extract Class + Value Object): esta clase
++ * cargaba con dos razones de cambio. Decidia cuanto se cobra -- las
++ * constantes PRECIO_BASE, DESCUENTO_REPROGRAMACION, DESCUENTO_FIDELIDAD,
++ * el prefijo del codigo institucional y el switch que los aplicaba -- y
++ * ademas decidia como se ve el recibo. Que el area academica cambie un
++ * descuento y que se agregue una linea al recibo son cambios sin
++ * relacion, y los dos llegaban a este archivo; peor aun, la regla de
++ * precio solo podia probarse leyendo el texto impreso.</p>
++ *
++ * <p>La regla de cobro se movio a
++ * {@link TarifarioTutoria} y el importe se representa con el Value
++ * Object {@link Dinero}, que sabe formatearse. Lo que queda aqui es
++ * solo presentacion: rotulos, orden de las lineas y saltos de linea. El
++ * texto producido es identico, caracter por caracter, al de Ae4.</p>
+  */
+ public class GeneradorReciboReserva {
+ 
+-    private static final double PRECIO_BASE = 15.0;
+-    private static final double DESCUENTO_REPROGRAMACION = 0.1;
+-    private static final double DESCUENTO_FIDELIDAD = 0.2;
+-    private static final String PREFIJO_CODIGO_FIDELIDAD = "UEES";
+-
+-    public String generar(Reserva reserva) {
+-        EstadoReserva estado = reserva.getEstado();
+-        double precio = calcularPrecio(reserva, estado);
++    private final TarifarioTutoria tarifario;
+ 
+-        String recibo = "";
+-        recibo = recibo + construirEncabezado(reserva);
+-        recibo = recibo + construirLineaEstado(reserva, estado);
+-        recibo = recibo + "Total a pagar: $" + precio + "\n";
+-        return recibo;
++    public GeneradorReciboReserva() {
++        this(new TarifarioTutoria());
+     }
+ 
+-    private double calcularPrecio(Reserva reserva, EstadoReserva estado) {
+-        return switch (estado) {
+-            case REPROGRAMADA -> PRECIO_BASE - (PRECIO_BASE * DESCUENTO_REPROGRAMACION);
+-            case CANCELADA -> 0.0;
+-            case COMPLETADA -> tieneCodigoFidelidad(reserva)
+-                    ? PRECIO_BASE - (PRECIO_BASE * DESCUENTO_FIDELIDAD)
+-                    : PRECIO_BASE;
+-            case SOLICITADA, CONFIRMADA -> PRECIO_BASE;
+-        };
++    /** Permite inyectar otro tarifario (por ejemplo, uno de prueba o una tarifa promocional). */
++    public GeneradorReciboReserva(TarifarioTutoria tarifario) {
++        this.tarifario = tarifario;
+     }
+ 
+-    private boolean tieneCodigoFidelidad(Reserva reserva) {
+-        String codigo = reserva.getEstudiante().getCodigoEstudiantil();
+-        return codigo != null && codigo.startsWith(PREFIJO_CODIGO_FIDELIDAD);
++    public String generar(Reserva reserva) {
++        Dinero total = tarifario.calcular(reserva);
++
++        return construirEncabezado(reserva)
++                + construirLineaEstado(reserva, reserva.getEstado())
++                + "Total a pagar: " + total + "\n";
+     }
+ 
+     private String construirEncabezado(Reserva reserva) {
+-        String encabezado = "";
+-        encabezado = encabezado + "Recibo de tutoria\n";
+-        encabezado = encabezado + "Estudiante: " + reserva.getEstudiante().getNombre() + "\n";
+-        encabezado = encabezado + "Docente: " + reserva.getDocente().getNombre() + "\n";
+-        encabezado = encabezado + "Horario: " + reserva.getHorario() + "\n";
+-        return encabezado;
++        return "Recibo de tutoria\n"
++                + "Estudiante: " + reserva.getEstudiante().getNombre() + "\n"
++                + "Docente: " + reserva.getDocente().getNombre() + "\n"
++                + "Horario: " + reserva.getHorario() + "\n";
+     }
+ 
+     private String construirLineaEstado(Reserva reserva, EstadoReserva estado) {
+diff --git a/src/main/java/edu/uees/tutorias/service/ServicioReservas.java b/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
+index c0f8315..6391042 100644
+--- a/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
++++ b/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
+@@ -4,6 +4,7 @@ import edu.uees.tutorias.domain.Docente;
+ import edu.uees.tutorias.domain.Estudiante;
+ import edu.uees.tutorias.domain.Horario;
+ import edu.uees.tutorias.domain.Reserva;
++import edu.uees.tutorias.domain.SolicitudTutoria;
+ import edu.uees.tutorias.notification.observer.ObservadorReserva;
+ import edu.uees.tutorias.repository.RepositorioReservas;
+ import edu.uees.tutorias.service.cancelacion.PoliticaCancelacion;
+@@ -55,18 +56,31 @@ public class ServicioReservas {
+         observadores.add(Objects.requireNonNull(observador));
+     }
+ 
+-    public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
+-        if (!horario.isDisponible()) {
+-            throw new IllegalStateException("El horario seleccionado ya no esta disponible");
+-        }
+-        horario.marcarOcupado();
+-        Reserva reserva = new Reserva(estudiante, docente, horario);
++    /**
++     * Registra una nueva reserva a partir de una solicitud de tutoria.
++     *
++     * <p>Refactorizacion 5 de Ae5 (agrupar Data Clump): la firma recibia
++     * los tres datos de la solicitud por separado y los reenviaba en el
++     * mismo orden al constructor de Reserva. Ahora recibe el concepto
++     * completo, {@link SolicitudTutoria}, que se valida a si mismo.</p>
++     */
++    public Reserva solicitarReserva(SolicitudTutoria solicitud) {
++        solicitud.horario().reservar();
++        Reserva reserva = new Reserva(solicitud);
+         repositorio.guardar(reserva);
+ 
+         publicar(reserva, "SOLICITADA");
+         return reserva;
+     }
+ 
++    /**
++     * Sobrecarga conservada por compatibilidad con el codigo de Ae1-Ae4:
++     * delega en la version basada en {@link SolicitudTutoria}.
++     */
++    public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
++        return solicitarReserva(new SolicitudTutoria(estudiante, docente, horario));
++    }
++
+     public void confirmarReserva(String reservaId) {
+         Reserva reserva = obtenerReserva(reservaId);
+         reserva.confirmar();
+@@ -82,20 +96,13 @@ public class ServicioReservas {
+             throw new IllegalStateException(resultado.getObservacion());
+         }
+ 
+-        String notaFinal = resultado.getObservacion().isEmpty()
+-                ? motivo
+-                : motivo + " [" + resultado.getObservacion() + "]";
+-
+-        reserva.cancelar(notaFinal);
++        reserva.cancelar(resultado.componerNota(motivo));
+         repositorio.guardar(reserva);
+         publicar(reserva, "CANCELADA");
+     }
+ 
+     public void reprogramarReserva(String reservaId, Horario nuevoHorario) {
+         Reserva reserva = obtenerReserva(reservaId);
+-        if (!nuevoHorario.isDisponible()) {
+-            throw new IllegalStateException("El nuevo horario no esta disponible");
+-        }
+         reserva.reprogramar(nuevoHorario);
+         repositorio.guardar(reserva);
+         publicar(reserva, "REPROGRAMADA");
+diff --git a/src/main/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacion.java b/src/main/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacion.java
+index 454bd27..65ab0e9 100644
+--- a/src/main/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacion.java
++++ b/src/main/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacion.java
+@@ -32,6 +32,33 @@ public final class ResultadoCancelacion {
+         return permitida;
+     }
+ 
++    /**
++     * Compone la nota que quedara registrada en la reserva a partir del
++     * motivo que indico quien cancela y de la observacion que agrego la
++     * politica.
++     *
++     * <p>Refactorizacion 4 de Ae5 (Decompose Conditional + Move Method):
++     * esta regla estaba escrita como un operador ternario dentro de
++     * {@code ServicioReservas.cancelarReserva}, que preguntaba
++     * {@code resultado.getObservacion().isEmpty()} y armaba el texto con
++     * corchetes segun la respuesta. Era el servicio interrogando los
++     * datos de otro objeto para decidir por el (<em>Feature Envy</em>) y
++     * una condicion sin nombre mezclada con la orquestacion del caso de
++     * uso. Ahora la decision vive en el objeto que posee la observacion,
++     * con un nombre que dice que produce, y el servicio solo pide la
++     * nota.</p>
++     *
++     * <p>El texto resultante es identico al anterior: el motivo solo, o
++     * el motivo seguido de la observacion entre corchetes.</p>
++     */
++    public String componerNota(String motivo) {
++        return tieneObservacion() ? motivo + " [" + observacion + "]" : motivo;
++    }
++
++    public boolean tieneObservacion() {
++        return !observacion.isEmpty();
++    }
++
+     public String getObservacion() {
+         return observacion;
+     }

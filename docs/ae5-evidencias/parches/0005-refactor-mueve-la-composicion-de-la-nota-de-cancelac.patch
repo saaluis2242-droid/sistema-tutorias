@@ -1,0 +1,253 @@
+From 41f14c7fa226aacf80f2944e40aa4c20037d6a9f Mon Sep 17 00:00:00 2001
+From: Luis Saa <saaluis2242@gmail.com>
+Date: Mon, 21 Sep 2026 22:09:31 -0500
+Subject: [PATCH 5/7] refactor: mueve la composicion de la nota de cancelacion
+ a ResultadoCancelacion
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Problema de diseño: ServicioReservas.cancelarReserva armaba la nota con
+un operador ternario que preguntaba resultado.getObservacion().isEmpty()
+y concatenaba corchetes segun la respuesta. Era Feature Envy -- el
+servicio interrogaba los datos de otro objeto para decidir en su lugar --
+y una condicion sin nombre mezclada con la orquestacion del caso de uso;
+cualquier cambio de formato de la nota obligaba a tocar el servicio.
+
+Cambio (Decompose Conditional + Move Method): la regla pasa a
+ResultadoCancelacion.componerNota(motivo), con la condicion nombrada
+como tieneObservacion(). El servicio ahora solo pide la nota y queda
+reducido a orquestacion: obtener, evaluar, cancelar, guardar, publicar.
+
+Pruebas que protegen el cambio: ServicioReservasCaracterizacionTest
+(nota exactamente igual al motivo cuando no hay observacion, y motivo
+mas observacion entre corchetes cuando la hay) y ServicioReservasTest
+de Ae4 (cancelacion tardia marcada por la politica con antelacion). Se
+agrega ResultadoCancelacionTest para probar la regla sin montar el
+servicio completo.
+
+Suite: 69 pruebas, 69 correctas.
+---
+ .../04-suite-verde-decompose-conditional.txt  | 97 +++++++++++++++++++
+ .../tutorias/service/ServicioReservas.java    |  6 +-
+ .../cancelacion/ResultadoCancelacion.java     | 27 ++++++
+ .../cancelacion/ResultadoCancelacionTest.java | 48 +++++++++
+ 4 files changed, 173 insertions(+), 5 deletions(-)
+ create mode 100644 docs/ae5-evidencias/04-suite-verde-decompose-conditional.txt
+ create mode 100644 src/test/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacionTest.java
+
+diff --git a/docs/ae5-evidencias/04-suite-verde-decompose-conditional.txt b/docs/ae5-evidencias/04-suite-verde-decompose-conditional.txt
+new file mode 100644
+index 0000000..878c34f
+--- /dev/null
++++ b/docs/ae5-evidencias/04-suite-verde-decompose-conditional.txt
+@@ -0,0 +1,97 @@
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++=== ServicioReservasCaracterizacionTest ===
++  [OK]   cadaCambioDeEstadoPublicaSuEventoEnOrden
++  [OK]   laObservacionDeLaPoliticaSeAnexaAlMotivoEntreCorchetes
++  [OK]   laReservaSolicitadaQuedaPersistidaYSePuedeRecuperarPorId
++  [OK]   operarSobreUnaReservaInexistenteFallaConSuMensaje
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaConSuMensajeYNoAlteraLaReserva
++  [OK]   sinObservacionLaNotaEsExactamenteElMotivo
++  [OK]   solicitarUnHorarioOcupadoFallaConSuMensajeYSinPublicarEventos
++  [OK]   unaCancelacionRechazadaPorLaPoliticaNoCambiaElEstadoNiPublicaEvento
++
++=== ServicioReservasTest ===
++  [OK]   agregarObservadorEnTiempoDeEjecucionRecibeEventosPosteriores
++  [OK]   cancelarReservaConPoliticaEstandarLiberaElHorarioSinObservaciones
++  [OK]   cancelarReservaCuyoHorarioYaPasoEsRechazadaPorLaPolitica
++  [OK]   cancelarReservaTardiaQuedaMarcadaPorLaPoliticaConAntelacion
++  [OK]   confirmarReservaCambiaSuEstadoYPublicaEvento
++  [OK]   noSePuedeReservarUnHorarioYaOcupado
++  [OK]   reprogramarReservaCambiaElHorarioAsociadoYPublicaEvento
++  [OK]   solicitarReservaDejaElHorarioOcupadoYPublicaEvento
++
++=== AgendaDocenteTest ===
++  [OK]   laColeccionExpuestaNoSePuedeModificarDesdeAfuera
++  [OK]   publicaLosHorariosEnOrden
++  [OK]   rechazaUnHorarioSolapadoSinAgregarlo
++  [OK]   unaAgendaNuevaEstaVacia
++
++=== CorreoTest ===
++  [OK]   dosCorreosConElMismoValorSonIguales
++  [OK]   elCorreoSabeSeparaseEnUsuarioYDominio
++  [OK]   unCorreoNoPuedeExistirInvalido
++  [OK]   unCorreoValidoConservaSuTexto
++
++=== DocenteTest ===
++  [OK]   dosHorariosConsecutivosNoSeConsideranSolapados
++  [OK]   laAgendaExpuestaEsDeSoloLectura
++  [OK]   losHorariosSePublicanYSeConservanEnOrden
++  [OK]   unDocenteNuevoNoTieneHorariosPublicados
++  [OK]   unHorarioQueSeSolapaConOtroYaPublicadoEsRechazado
++
++=== HorarioTest ===
++  [OK]   dosHorariosConElMismoIntervaloSonIguales
++  [OK]   dosHorariosQueComparteMinutosSeSolapan
++  [OK]   elTextoDeUnHorarioEsElQueUsaElRecibo
++  [OK]   ocuparDosVecesElMismoHorarioEsUnError
++  [OK]   ocuparUnHorarioLoDejaNoDisponibleYLiberarloLoDevuelveADisponible
++  [OK]   reservarUnHorarioDisponibleLoOcupa
++  [OK]   reservarUnHorarioYaTomadoFallaConElMensajeQueEmitiaElServicio
++  [OK]   unHorarioCuyoFinNoEsPosteriorAlInicioEsRechazado
++  [OK]   unHorarioNaceDisponible
++
++=== ReservaTest ===
++  [OK]   cancelarLiberaElHorarioYGuardaElMotivo
++  [OK]   cancelarSinMotivoDejaLasNotasVacias
++  [OK]   reprogramarHaciaUnHorarioNuloFallaSinLiberarElHorarioActual
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaSinAlterarLaReserva
++  [OK]   reprogramarLiberaElHorarioAnteriorYOcupaElNuevo
++  [OK]   soloUnaReservaConfirmadaPuedeCompletarse
++  [OK]   soloUnaReservaSolicitadaPuedeConfirmarse
++  [OK]   unaReservaCompletadaNoPuedeCancelarse
++  [OK]   unaReservaExigeEstudianteDocenteYHorario
++  [OK]   unaReservaNaceSolicitadaConIdYSinNotas
++  [OK]   unaReservaYaCanceladaNoPuedeCancelarseNiReprogramarse
++
++=== UsuarioTest ===
++  [OK]   cadaTipoDeUsuarioDescribeSuPropioRol
++  [OK]   dosUsuariosConElMismoIdSonElMismoUsuario
++  [OK]   elCanalPreferidoPorDefectoEsEmailYPuedeCambiarse
++  [OK]   elCodigoEstudiantilEsObligatorio
++  [OK]   elCorreoSeLeeDeVueltaComoElMismoTexto
++  [OK]   laEspecialidadDelDocenteEsObligatoria
++  [OK]   unCorreoNuloEsRechazado
++  [OK]   unCorreoSinArrobaEsRechazadoConElMismoMensajeDeSiempre
++  [OK]   unNombreEnBlancoEsRechazado
++
++=== NotificadorCreatorFactoryTest ===
++  [OK]   devuelveElCreadorCorrectoParaCadaCanal
++[EMAIL] Para: Luis Perez <luis@uees.edu.ec> | Mensaje: mensaje de prueba
++  [OK]   elCreadorObtenidoPuedeNotificarSinConocerLaClaseConcreta
++
++=== GeneradorReciboReservaTest ===
++  [OK]   reciboDeUnaReservaCanceladaNoCobraYMuestraElMotivo
++  [OK]   reciboDeUnaReservaCompletadaConCodigoUeesAplicaDescuentoDeFidelidad
++  [OK]   reciboDeUnaReservaCompletadaSinCodigoUeesNoAplicaDescuento
++  [OK]   reciboDeUnaReservaConfirmadaCobraElPrecioBase
++  [OK]   reciboDeUnaReservaReprogramadaAplicaDiezPorCientoDeDescuento
++  [OK]   reciboDeUnaReservaSolicitadaCobraElPrecioBase
++
++=== ResultadoCancelacionTest ===
++  [OK]   unaCancelacionPermitidaSinObservacionDejaElMotivoIntacto
++  [OK]   unaCancelacionRechazadaLlevaElMotivoDelRechazoComoObservacion
++  [OK]   unaObservacionSeAnexaAlMotivoEntreCorchetes
++
++-----------------------------------------------
++Pruebas ejecutadas: 69, correctas: 69, fallidas: 0
++RESULTADO: SUITE VERDE
+diff --git a/src/main/java/edu/uees/tutorias/service/ServicioReservas.java b/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
+index 1c86ecf..fed41bc 100644
+--- a/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
++++ b/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
+@@ -79,11 +79,7 @@ public class ServicioReservas {
+             throw new IllegalStateException(resultado.getObservacion());
+         }
+ 
+-        String notaFinal = resultado.getObservacion().isEmpty()
+-                ? motivo
+-                : motivo + " [" + resultado.getObservacion() + "]";
+-
+-        reserva.cancelar(notaFinal);
++        reserva.cancelar(resultado.componerNota(motivo));
+         repositorio.guardar(reserva);
+         publicar(reserva, "CANCELADA");
+     }
+diff --git a/src/main/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacion.java b/src/main/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacion.java
+index 454bd27..65ab0e9 100644
+--- a/src/main/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacion.java
++++ b/src/main/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacion.java
+@@ -32,6 +32,33 @@ public final class ResultadoCancelacion {
+         return permitida;
+     }
+ 
++    /**
++     * Compone la nota que quedara registrada en la reserva a partir del
++     * motivo que indico quien cancela y de la observacion que agrego la
++     * politica.
++     *
++     * <p>Refactorizacion 4 de Ae5 (Decompose Conditional + Move Method):
++     * esta regla estaba escrita como un operador ternario dentro de
++     * {@code ServicioReservas.cancelarReserva}, que preguntaba
++     * {@code resultado.getObservacion().isEmpty()} y armaba el texto con
++     * corchetes segun la respuesta. Era el servicio interrogando los
++     * datos de otro objeto para decidir por el (<em>Feature Envy</em>) y
++     * una condicion sin nombre mezclada con la orquestacion del caso de
++     * uso. Ahora la decision vive en el objeto que posee la observacion,
++     * con un nombre que dice que produce, y el servicio solo pide la
++     * nota.</p>
++     *
++     * <p>El texto resultante es identico al anterior: el motivo solo, o
++     * el motivo seguido de la observacion entre corchetes.</p>
++     */
++    public String componerNota(String motivo) {
++        return tieneObservacion() ? motivo + " [" + observacion + "]" : motivo;
++    }
++
++    public boolean tieneObservacion() {
++        return !observacion.isEmpty();
++    }
++
+     public String getObservacion() {
+         return observacion;
+     }
+diff --git a/src/test/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacionTest.java b/src/test/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacionTest.java
+new file mode 100644
+index 0000000..fdb74c3
+--- /dev/null
++++ b/src/test/java/edu/uees/tutorias/service/cancelacion/ResultadoCancelacionTest.java
+@@ -0,0 +1,48 @@
++package edu.uees.tutorias.service.cancelacion;
++
++import org.junit.jupiter.api.Test;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertFalse;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++/**
++ * Pruebas del resultado de evaluar una politica de cancelacion, con la
++ * regla de composicion de la nota que la Refactorizacion 4 trajo desde
++ * {@code ServicioReservas}.
++ *
++ * <p>Antes, para verificar el formato de la nota habia que montar un
++ * repositorio, una politica y un servicio completos (asi lo hace
++ * {@code ServicioReservasCaracterizacionTest}, que se mantiene como red
++ * de seguridad). Ahora la misma regla se prueba sobre el objeto que la
++ * contiene.</p>
++ */
++class ResultadoCancelacionTest {
++
++    @Test
++    void unaCancelacionPermitidaSinObservacionDejaElMotivoIntacto() {
++        ResultadoCancelacion resultado = ResultadoCancelacion.permitida();
++
++        assertTrue(resultado.isPermitida());
++        assertFalse(resultado.tieneObservacion());
++        assertEquals("Imprevisto del estudiante", resultado.componerNota("Imprevisto del estudiante"));
++    }
++
++    @Test
++    void unaObservacionSeAnexaAlMotivoEntreCorchetes() {
++        ResultadoCancelacion resultado =
++                ResultadoCancelacion.permitidaConObservacion("cancelacion tardia");
++
++        assertTrue(resultado.isPermitida());
++        assertTrue(resultado.tieneObservacion());
++        assertEquals("Imprevisto [cancelacion tardia]", resultado.componerNota("Imprevisto"));
++    }
++
++    @Test
++    void unaCancelacionRechazadaLlevaElMotivoDelRechazoComoObservacion() {
++        ResultadoCancelacion resultado = ResultadoCancelacion.rechazada("el horario ya inicio");
++
++        assertFalse(resultado.isPermitida());
++        assertEquals("el horario ya inicio", resultado.getObservacion());
++    }
++}
+-- 
+2.43.0
+

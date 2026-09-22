@@ -1,0 +1,342 @@
+From fcab73f8f8b5d37e2b5d7ec6cd557d552c2bada2 Mon Sep 17 00:00:00 2001
+From: Luis Saa <saaluis2242@gmail.com>
+Date: Mon, 21 Sep 2026 22:07:38 -0500
+Subject: [PATCH 3/7] refactor: extrae AgendaDocente de Docente (Extract Class)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Problema de diseño: Docente tenia dos razones de cambio en la misma
+clase. Era un Usuario (identidad, nombre, correo, canal preferido, rol)
+y al mismo tiempo administraba una estructura de datos con su propia
+regla de negocio: la lista de horarios, la validacion de solapamiento y
+la exposicion de solo lectura. Toda evolucion de la disponibilidad
+(proximo horario libre, cupos por semana, retirar un horario publicado)
+habria engordado a Docente sin relacion con lo que lo hace un usuario.
+
+Cambio: la coleccion de horarios y la regla de no solapamiento se mueven
+a la nueva clase AgendaDocente (Extract Class + Move Method). Docente
+conserva su interfaz publica (publicarHorario, getHorarios) delegando en
+su agenda, de modo que ningun cliente -- Main, ServicioReservas, pruebas
+-- necesito cambiar.
+
+Pruebas que protegen el cambio: DocenteTest (publicacion en orden,
+rechazo del solapamiento con el mismo mensaje, coleccion inmodificable,
+horarios consecutivos permitidos). Se agrega AgendaDocenteTest, que
+prueba la regla sin construir un Docente completo.
+
+Nota: al mover el metodo se detecto que no valida el nulo. Se dejo
+igual a proposito: refactorizar no es corregir comportamiento.
+
+Suite: 62 pruebas, 62 correctas.
+---
+ .../02-suite-verde-extract-class-agenda.txt   | 88 +++++++++++++++++++
+ .../uees/tutorias/domain/AgendaDocente.java   | 62 +++++++++++++
+ .../edu/uees/tutorias/domain/Docente.java     | 33 ++++---
+ .../tutorias/domain/AgendaDocenteTest.java    | 66 ++++++++++++++
+ 4 files changed, 235 insertions(+), 14 deletions(-)
+ create mode 100644 docs/ae5-evidencias/02-suite-verde-extract-class-agenda.txt
+ create mode 100644 src/main/java/edu/uees/tutorias/domain/AgendaDocente.java
+ create mode 100644 src/test/java/edu/uees/tutorias/domain/AgendaDocenteTest.java
+
+diff --git a/docs/ae5-evidencias/02-suite-verde-extract-class-agenda.txt b/docs/ae5-evidencias/02-suite-verde-extract-class-agenda.txt
+new file mode 100644
+index 0000000..068ec9f
+--- /dev/null
++++ b/docs/ae5-evidencias/02-suite-verde-extract-class-agenda.txt
+@@ -0,0 +1,88 @@
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++=== ServicioReservasCaracterizacionTest ===
++  [OK]   cadaCambioDeEstadoPublicaSuEventoEnOrden
++  [OK]   laObservacionDeLaPoliticaSeAnexaAlMotivoEntreCorchetes
++  [OK]   laReservaSolicitadaQuedaPersistidaYSePuedeRecuperarPorId
++  [OK]   operarSobreUnaReservaInexistenteFallaConSuMensaje
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaConSuMensajeYNoAlteraLaReserva
++  [OK]   sinObservacionLaNotaEsExactamenteElMotivo
++  [OK]   solicitarUnHorarioOcupadoFallaConSuMensajeYSinPublicarEventos
++  [OK]   unaCancelacionRechazadaPorLaPoliticaNoCambiaElEstadoNiPublicaEvento
++
++=== ServicioReservasTest ===
++  [OK]   agregarObservadorEnTiempoDeEjecucionRecibeEventosPosteriores
++  [OK]   cancelarReservaConPoliticaEstandarLiberaElHorarioSinObservaciones
++  [OK]   cancelarReservaCuyoHorarioYaPasoEsRechazadaPorLaPolitica
++  [OK]   cancelarReservaTardiaQuedaMarcadaPorLaPoliticaConAntelacion
++  [OK]   confirmarReservaCambiaSuEstadoYPublicaEvento
++  [OK]   noSePuedeReservarUnHorarioYaOcupado
++  [OK]   reprogramarReservaCambiaElHorarioAsociadoYPublicaEvento
++  [OK]   solicitarReservaDejaElHorarioOcupadoYPublicaEvento
++
++=== AgendaDocenteTest ===
++  [OK]   laColeccionExpuestaNoSePuedeModificarDesdeAfuera
++  [OK]   publicaLosHorariosEnOrden
++  [OK]   rechazaUnHorarioSolapadoSinAgregarlo
++  [OK]   unaAgendaNuevaEstaVacia
++
++=== CorreoTest ===
++  [OK]   dosCorreosConElMismoValorSonIguales
++  [OK]   elCorreoSabeSeparaseEnUsuarioYDominio
++  [OK]   unCorreoNoPuedeExistirInvalido
++  [OK]   unCorreoValidoConservaSuTexto
++
++=== DocenteTest ===
++  [OK]   dosHorariosConsecutivosNoSeConsideranSolapados
++  [OK]   laAgendaExpuestaEsDeSoloLectura
++  [OK]   losHorariosSePublicanYSeConservanEnOrden
++  [OK]   unDocenteNuevoNoTieneHorariosPublicados
++  [OK]   unHorarioQueSeSolapaConOtroYaPublicadoEsRechazado
++
++=== HorarioTest ===
++  [OK]   dosHorariosConElMismoIntervaloSonIguales
++  [OK]   dosHorariosQueComparteMinutosSeSolapan
++  [OK]   elTextoDeUnHorarioEsElQueUsaElRecibo
++  [OK]   ocuparDosVecesElMismoHorarioEsUnError
++  [OK]   ocuparUnHorarioLoDejaNoDisponibleYLiberarloLoDevuelveADisponible
++  [OK]   unHorarioCuyoFinNoEsPosteriorAlInicioEsRechazado
++  [OK]   unHorarioNaceDisponible
++
++=== ReservaTest ===
++  [OK]   cancelarLiberaElHorarioYGuardaElMotivo
++  [OK]   cancelarSinMotivoDejaLasNotasVacias
++  [OK]   reprogramarLiberaElHorarioAnteriorYOcupaElNuevo
++  [OK]   soloUnaReservaConfirmadaPuedeCompletarse
++  [OK]   soloUnaReservaSolicitadaPuedeConfirmarse
++  [OK]   unaReservaCompletadaNoPuedeCancelarse
++  [OK]   unaReservaExigeEstudianteDocenteYHorario
++  [OK]   unaReservaNaceSolicitadaConIdYSinNotas
++  [OK]   unaReservaYaCanceladaNoPuedeCancelarseNiReprogramarse
++
++=== UsuarioTest ===
++  [OK]   cadaTipoDeUsuarioDescribeSuPropioRol
++  [OK]   dosUsuariosConElMismoIdSonElMismoUsuario
++  [OK]   elCanalPreferidoPorDefectoEsEmailYPuedeCambiarse
++  [OK]   elCodigoEstudiantilEsObligatorio
++  [OK]   elCorreoSeLeeDeVueltaComoElMismoTexto
++  [OK]   laEspecialidadDelDocenteEsObligatoria
++  [OK]   unCorreoNuloEsRechazado
++  [OK]   unCorreoSinArrobaEsRechazadoConElMismoMensajeDeSiempre
++  [OK]   unNombreEnBlancoEsRechazado
++
++=== NotificadorCreatorFactoryTest ===
++  [OK]   devuelveElCreadorCorrectoParaCadaCanal
++[EMAIL] Para: Luis Perez <luis@uees.edu.ec> | Mensaje: mensaje de prueba
++  [OK]   elCreadorObtenidoPuedeNotificarSinConocerLaClaseConcreta
++
++=== GeneradorReciboReservaTest ===
++  [OK]   reciboDeUnaReservaCanceladaNoCobraYMuestraElMotivo
++  [OK]   reciboDeUnaReservaCompletadaConCodigoUeesAplicaDescuentoDeFidelidad
++  [OK]   reciboDeUnaReservaCompletadaSinCodigoUeesNoAplicaDescuento
++  [OK]   reciboDeUnaReservaConfirmadaCobraElPrecioBase
++  [OK]   reciboDeUnaReservaReprogramadaAplicaDiezPorCientoDeDescuento
++  [OK]   reciboDeUnaReservaSolicitadaCobraElPrecioBase
++
++-----------------------------------------------
++Pruebas ejecutadas: 62, correctas: 62, fallidas: 0
++RESULTADO: SUITE VERDE
+diff --git a/src/main/java/edu/uees/tutorias/domain/AgendaDocente.java b/src/main/java/edu/uees/tutorias/domain/AgendaDocente.java
+new file mode 100644
+index 0000000..ad1fb87
+--- /dev/null
++++ b/src/main/java/edu/uees/tutorias/domain/AgendaDocente.java
+@@ -0,0 +1,62 @@
++package edu.uees.tutorias.domain;
++
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.List;
++
++/**
++ * Agenda de disponibilidad de un docente: la coleccion de horarios
++ * publicados y la regla que impide que dos de ellos se solapen.
++ *
++ * <p>Problema de diseño que resuelve (Refactorizacion 2 de Ae5):
++ * {@link Docente} tenia dos razones de cambio conviviendo en la misma
++ * clase. Por un lado era un {@link Usuario} (identidad, nombre, correo,
++ * canal preferido, rol); por otro administraba una estructura de datos
++ * con su propia regla de negocio (la lista de horarios, la validacion de
++ * solapamiento y la exposicion de solo lectura). Cualquier evolucion de
++ * la agenda -- buscar el proximo horario libre, limitar cupos por
++ * semana, retirar un horario ya publicado, replicar la agenda de una
++ * semana -- habria engordado a Docente sin relacion con lo que hace a un
++ * docente ser un usuario del sistema.</p>
++ *
++ * <p>Al extraer la clase, cada una queda con una unica razon de cambio:
++ * Docente representa a la persona y delega en su agenda; AgendaDocente
++ * es el lugar natural donde crecen las reglas de disponibilidad, y puede
++ * probarse sin construir un Docente completo.</p>
++ *
++ * <p>El comportamiento observable no cambia: se sigue rechazando un
++ * horario solapado con {@link IllegalStateException} y el mismo mensaje,
++ * se conserva el orden de publicacion y la coleccion expuesta sigue
++ * siendo inmodificable.</p>
++ */
++public class AgendaDocente {
++
++    private final List<Horario> horarios = new ArrayList<>();
++
++    /** Horarios publicados, en orden de publicacion y de solo lectura. */
++    public List<Horario> getHorarios() {
++        return Collections.unmodifiableList(horarios);
++    }
++
++    /**
++     * Publica un nuevo horario, evitando que se solape con uno existente.
++     *
++     * <p>Nota de disciplina de refactorizacion: al mover este metodo se
++     * detecto que no valida el nulo (publicar(null) sobre una agenda
++     * vacia lo agregaria a la lista). Ese defecto latente se dejo tal
++     * como estaba a proposito: una refactorizacion no debe corregir
++     * comportamiento, solo estructura. Queda registrado como trabajo
++     * pendiente, con su propia prueba, para un cambio posterior que si
++     * sea un cambio funcional declarado.</p>
++     */
++    public void publicar(Horario horario) {
++        if (seSolapaConAlguno(horario)) {
++            throw new IllegalStateException("El horario se solapa con uno ya publicado");
++        }
++        horarios.add(horario);
++    }
++
++    private boolean seSolapaConAlguno(Horario horario) {
++        return horarios.stream().anyMatch(publicado -> publicado.seSolapaCon(horario));
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/domain/Docente.java b/src/main/java/edu/uees/tutorias/domain/Docente.java
+index f9e7ce6..e388ba8 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Docente.java
++++ b/src/main/java/edu/uees/tutorias/domain/Docente.java
+@@ -1,22 +1,26 @@
+ package edu.uees.tutorias.domain;
+ 
+-import java.util.ArrayList;
+-import java.util.Collections;
+ import java.util.List;
+ 
+ /**
+  * Docente que publica y administra su propia disponibilidad de horarios.
+  *
+- * La lista de horarios es una composicion: los Horario de un Docente
+- * viven y mueren con el (si se elimina el Docente, sus horarios dejan
+- * de tener sentido). Por eso la coleccion se expone solo de lectura y
+- * las reglas de publicacion (no solapar horarios) las protege esta
+- * misma clase.
++ * La agenda es una composicion: los Horario de un Docente viven y mueren
++ * con el (si se elimina el Docente, sus horarios dejan de tener
++ * sentido).
++ *
++ * <p>Refactorizacion 2 de Ae5 (Extract Class): la lista de horarios y la
++ * regla de no solapamiento vivian aqui, mezclando la identidad del
++ * usuario con la administracion de una estructura de datos de negocio.
++ * Ahora esa responsabilidad es de {@link AgendaDocente} y esta clase
++ * delega en ella, conservando la misma interfaz publica
++ * ({@code publicarHorario}, {@code getHorarios}) para no afectar a
++ * ningun cliente.</p>
+  */
+ public class Docente extends Usuario {
+ 
+     private final String especialidad;
+-    private final List<Horario> horarios = new ArrayList<>();
++    private final AgendaDocente agenda = new AgendaDocente();
+ 
+     public Docente(String id, String nombre, String correo, String especialidad) {
+         super(id, nombre, correo);
+@@ -30,17 +34,18 @@ public class Docente extends Usuario {
+         return especialidad;
+     }
+ 
++    /** Agenda del docente, para operar sobre su disponibilidad directamente. */
++    public AgendaDocente getAgenda() {
++        return agenda;
++    }
++
+     public List<Horario> getHorarios() {
+-        return Collections.unmodifiableList(horarios);
++        return agenda.getHorarios();
+     }
+ 
+     /** Publica un nuevo horario, evitando que se solape con uno existente. */
+     public void publicarHorario(Horario horario) {
+-        boolean seSolapa = horarios.stream().anyMatch(h -> h.seSolapaCon(horario));
+-        if (seSolapa) {
+-            throw new IllegalStateException("El horario se solapa con uno ya publicado");
+-        }
+-        horarios.add(horario);
++        agenda.publicar(horario);
+     }
+ 
+     @Override
+diff --git a/src/test/java/edu/uees/tutorias/domain/AgendaDocenteTest.java b/src/test/java/edu/uees/tutorias/domain/AgendaDocenteTest.java
+new file mode 100644
+index 0000000..4251bc3
+--- /dev/null
++++ b/src/test/java/edu/uees/tutorias/domain/AgendaDocenteTest.java
+@@ -0,0 +1,66 @@
++package edu.uees.tutorias.domain;
++
++import org.junit.jupiter.api.Test;
++
++import java.time.LocalDateTime;
++import java.util.List;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++
++/**
++ * Pruebas propias de la clase extraida en la Refactorizacion 2.
++ *
++ * <p>Son el beneficio concreto de la extraccion: la regla de
++ * disponibilidad ahora se prueba sin construir un Docente (sin id,
++ * nombre, correo ni especialidad), lo que deja la prueba enfocada en lo
++ * unico que importa aqui. {@link DocenteTest} sigue verificando, en
++ * paralelo, que la delegacion conserva el comportamiento que ya existia.</p>
++ */
++class AgendaDocenteTest {
++
++    @Test
++    void unaAgendaNuevaEstaVacia() {
++        assertEquals(List.of(), new AgendaDocente().getHorarios());
++    }
++
++    @Test
++    void publicaLosHorariosEnOrden() {
++        AgendaDocente agenda = new AgendaDocente();
++        Horario lunes = horario(31, 10);
++        Horario martes = horario(31, 15);
++
++        agenda.publicar(lunes);
++        agenda.publicar(martes);
++
++        assertEquals(List.of(lunes, martes), agenda.getHorarios());
++    }
++
++    @Test
++    void rechazaUnHorarioSolapadoSinAgregarlo() {
++        AgendaDocente agenda = new AgendaDocente();
++        agenda.publicar(horario(31, 10));
++
++        IllegalStateException error = assertThrows(IllegalStateException.class,
++                () -> agenda.publicar(new Horario(
++                        LocalDateTime.of(2026, 8, 31, 10, 30),
++                        LocalDateTime.of(2026, 8, 31, 11, 30))));
++
++        assertEquals("El horario se solapa con uno ya publicado", error.getMessage());
++        assertEquals(1, agenda.getHorarios().size());
++    }
++
++    @Test
++    void laColeccionExpuestaNoSePuedeModificarDesdeAfuera() {
++        AgendaDocente agenda = new AgendaDocente();
++
++        assertThrows(UnsupportedOperationException.class,
++                () -> agenda.getHorarios().add(horario(31, 10)));
++    }
++
++    private Horario horario(int dia, int hora) {
++        return new Horario(
++                LocalDateTime.of(2026, 8, dia, hora, 0),
++                LocalDateTime.of(2026, 8, dia, hora + 1, 0));
++    }
++}
+-- 
+2.43.0
+

@@ -1,0 +1,427 @@
+From 451cd1aa0edb607190f94d0f468f6380d37ac58e Mon Sep 17 00:00:00 2001
+From: Luis Saa <saaluis2242@gmail.com>
+Date: Mon, 21 Sep 2026 22:10:53 -0500
+Subject: [PATCH 6/7] refactor: agrupa el data clump estudiante/docente/horario
+ en SolicitudTutoria
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Problema de diseño: los tres datos que definen una solicitud viajaban
+siempre juntos y siempre sueltos. El codigo cliente llamaba a
+solicitarReserva(estudiante, docente, horario), que reenviaba los mismos
+tres argumentos en el mismo orden a new Reserva(estudiante, docente,
+horario). Es un Data Clump con consecuencias concretas: dos de los tres
+parametros son Usuario, asi que invertirlos compilaba sin queja; la
+validacion del trio estaba repetida; y agregar un cuarto dato de la
+solicitud (modalidad, asignatura) habria obligado a cambiar todas las
+firmas de la cadena.
+
+Cambio: se introduce el record SolicitudTutoria, que agrupa y valida los
+tres datos una sola vez. Reserva y ServicioReservas reciben la solicitud
+completa y conservan sus firmas anteriores como sobrecargas que delegan,
+para no romper ningun cliente. Main pasa a usar el nuevo tipo.
+
+Efecto colateral positivo: como la solicitud se valida antes de tocar el
+horario, una solicitud incompleta ya no deja el horario ocupado. Antes,
+marcarOcupado() se ejecutaba primero y el fallo posterior del
+constructor dejaba el bloque inutilizable. Queda cubierto por
+unaSolicitudIncompletaNoConsumeElHorario.
+
+Pruebas que protegen el cambio: toda la suite de ServicioReservas y
+ReservaTest siguen usando las firmas de tres argumentos; se agrega
+SolicitudTutoriaTest con los mensajes de validacion y la igualdad por
+valor.
+
+Suite: 74 pruebas, 74 correctas.
+---
+ .../05-suite-verde-data-clump-solicitud.txt   | 104 ++++++++++++++++++
+ src/main/java/edu/uees/tutorias/app/Main.java |   8 +-
+ .../edu/uees/tutorias/domain/Reserva.java     |  26 ++++-
+ .../tutorias/domain/SolicitudTutoria.java     |  41 +++++++
+ .../tutorias/service/ServicioReservas.java    |  23 +++-
+ .../ServicioReservasCaracterizacionTest.java  |   9 ++
+ .../tutorias/domain/SolicitudTutoriaTest.java |  70 ++++++++++++
+ 7 files changed, 271 insertions(+), 10 deletions(-)
+ create mode 100644 docs/ae5-evidencias/05-suite-verde-data-clump-solicitud.txt
+ create mode 100644 src/main/java/edu/uees/tutorias/domain/SolicitudTutoria.java
+ create mode 100644 src/test/java/edu/uees/tutorias/domain/SolicitudTutoriaTest.java
+
+diff --git a/docs/ae5-evidencias/05-suite-verde-data-clump-solicitud.txt b/docs/ae5-evidencias/05-suite-verde-data-clump-solicitud.txt
+new file mode 100644
+index 0000000..afa7988
+--- /dev/null
++++ b/docs/ae5-evidencias/05-suite-verde-data-clump-solicitud.txt
+@@ -0,0 +1,104 @@
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++Picked up JAVA_TOOL_OPTIONS: -Djavax.net.ssl.trustStore=/root/.ccr/java-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=35133 -Dhttp.nonProxyHosts=localhost|127.0.0.1|::1|127.*|0.*|::|169.254.*|api.anthropic.com|api-staging.anthropic.com|api-pr-preview.anthropic.com|mcp-proxy.anthropic.com|mcp-proxy-staging.anthropic.com|registry.npmjs.org|jsr.io|npm.jsr.io|pypi.org|files.pythonhosted.org|index.crates.io|proxy.golang.org|host.docker.internal|10.*|172.16.*|172.17.*|172.18.*|172.19.*|172.20.*|172.21.*|172.22.*|172.23.*|172.24.*|172.25.*|172.26.*|172.27.*|172.28.*|172.29.*|172.30.*|172.31.*|192.168.*|100.64.0.0/10|*.svc.cluster.local|*.svc.cluster.local -Djdk.http.auth.tunneling.disabledSchemes= -Djdk.http.auth.proxying.disabledSchemes=
++=== ServicioReservasCaracterizacionTest ===
++  [OK]   cadaCambioDeEstadoPublicaSuEventoEnOrden
++  [OK]   laObservacionDeLaPoliticaSeAnexaAlMotivoEntreCorchetes
++  [OK]   laReservaSolicitadaQuedaPersistidaYSePuedeRecuperarPorId
++  [OK]   operarSobreUnaReservaInexistenteFallaConSuMensaje
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaConSuMensajeYNoAlteraLaReserva
++  [OK]   sinObservacionLaNotaEsExactamenteElMotivo
++  [OK]   solicitarUnHorarioOcupadoFallaConSuMensajeYSinPublicarEventos
++  [OK]   unaCancelacionRechazadaPorLaPoliticaNoCambiaElEstadoNiPublicaEvento
++  [OK]   unaSolicitudIncompletaNoConsumeElHorario
++
++=== ServicioReservasTest ===
++  [OK]   agregarObservadorEnTiempoDeEjecucionRecibeEventosPosteriores
++  [OK]   cancelarReservaConPoliticaEstandarLiberaElHorarioSinObservaciones
++  [OK]   cancelarReservaCuyoHorarioYaPasoEsRechazadaPorLaPolitica
++  [OK]   cancelarReservaTardiaQuedaMarcadaPorLaPoliticaConAntelacion
++  [OK]   confirmarReservaCambiaSuEstadoYPublicaEvento
++  [OK]   noSePuedeReservarUnHorarioYaOcupado
++  [OK]   reprogramarReservaCambiaElHorarioAsociadoYPublicaEvento
++  [OK]   solicitarReservaDejaElHorarioOcupadoYPublicaEvento
++
++=== AgendaDocenteTest ===
++  [OK]   laColeccionExpuestaNoSePuedeModificarDesdeAfuera
++  [OK]   publicaLosHorariosEnOrden
++  [OK]   rechazaUnHorarioSolapadoSinAgregarlo
++  [OK]   unaAgendaNuevaEstaVacia
++
++=== CorreoTest ===
++  [OK]   dosCorreosConElMismoValorSonIguales
++  [OK]   elCorreoSabeSeparaseEnUsuarioYDominio
++  [OK]   unCorreoNoPuedeExistirInvalido
++  [OK]   unCorreoValidoConservaSuTexto
++
++=== DocenteTest ===
++  [OK]   dosHorariosConsecutivosNoSeConsideranSolapados
++  [OK]   laAgendaExpuestaEsDeSoloLectura
++  [OK]   losHorariosSePublicanYSeConservanEnOrden
++  [OK]   unDocenteNuevoNoTieneHorariosPublicados
++  [OK]   unHorarioQueSeSolapaConOtroYaPublicadoEsRechazado
++
++=== HorarioTest ===
++  [OK]   dosHorariosConElMismoIntervaloSonIguales
++  [OK]   dosHorariosQueComparteMinutosSeSolapan
++  [OK]   elTextoDeUnHorarioEsElQueUsaElRecibo
++  [OK]   ocuparDosVecesElMismoHorarioEsUnError
++  [OK]   ocuparUnHorarioLoDejaNoDisponibleYLiberarloLoDevuelveADisponible
++  [OK]   reservarUnHorarioDisponibleLoOcupa
++  [OK]   reservarUnHorarioYaTomadoFallaConElMensajeQueEmitiaElServicio
++  [OK]   unHorarioCuyoFinNoEsPosteriorAlInicioEsRechazado
++  [OK]   unHorarioNaceDisponible
++
++=== ReservaTest ===
++  [OK]   cancelarLiberaElHorarioYGuardaElMotivo
++  [OK]   cancelarSinMotivoDejaLasNotasVacias
++  [OK]   reprogramarHaciaUnHorarioNuloFallaSinLiberarElHorarioActual
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaSinAlterarLaReserva
++  [OK]   reprogramarLiberaElHorarioAnteriorYOcupaElNuevo
++  [OK]   soloUnaReservaConfirmadaPuedeCompletarse
++  [OK]   soloUnaReservaSolicitadaPuedeConfirmarse
++  [OK]   unaReservaCompletadaNoPuedeCancelarse
++  [OK]   unaReservaExigeEstudianteDocenteYHorario
++  [OK]   unaReservaNaceSolicitadaConIdYSinNotas
++  [OK]   unaReservaYaCanceladaNoPuedeCancelarseNiReprogramarse
++
++=== SolicitudTutoriaTest ===
++  [OK]   dosSolicitudesConLosMismosDatosSonIguales
++  [OK]   ningunoDeLosTresDatosPuedeFaltarYElMensajeEsElDeSiempre
++  [OK]   unaReservaCreadaDesdeLaSolicitudTomaSusTresDatos
++  [OK]   unaSolicitudConservaSusTresDatos
++
++=== UsuarioTest ===
++  [OK]   cadaTipoDeUsuarioDescribeSuPropioRol
++  [OK]   dosUsuariosConElMismoIdSonElMismoUsuario
++  [OK]   elCanalPreferidoPorDefectoEsEmailYPuedeCambiarse
++  [OK]   elCodigoEstudiantilEsObligatorio
++  [OK]   elCorreoSeLeeDeVueltaComoElMismoTexto
++  [OK]   laEspecialidadDelDocenteEsObligatoria
++  [OK]   unCorreoNuloEsRechazado
++  [OK]   unCorreoSinArrobaEsRechazadoConElMismoMensajeDeSiempre
++  [OK]   unNombreEnBlancoEsRechazado
++
++=== NotificadorCreatorFactoryTest ===
++  [OK]   devuelveElCreadorCorrectoParaCadaCanal
++[EMAIL] Para: Luis Perez <luis@uees.edu.ec> | Mensaje: mensaje de prueba
++  [OK]   elCreadorObtenidoPuedeNotificarSinConocerLaClaseConcreta
++
++=== GeneradorReciboReservaTest ===
++  [OK]   reciboDeUnaReservaCanceladaNoCobraYMuestraElMotivo
++  [OK]   reciboDeUnaReservaCompletadaConCodigoUeesAplicaDescuentoDeFidelidad
++  [OK]   reciboDeUnaReservaCompletadaSinCodigoUeesNoAplicaDescuento
++  [OK]   reciboDeUnaReservaConfirmadaCobraElPrecioBase
++  [OK]   reciboDeUnaReservaReprogramadaAplicaDiezPorCientoDeDescuento
++  [OK]   reciboDeUnaReservaSolicitadaCobraElPrecioBase
++
++=== ResultadoCancelacionTest ===
++  [OK]   unaCancelacionPermitidaSinObservacionDejaElMotivoIntacto
++  [OK]   unaCancelacionRechazadaLlevaElMotivoDelRechazoComoObservacion
++  [OK]   unaObservacionSeAnexaAlMotivoEntreCorchetes
++
++-----------------------------------------------
++Pruebas ejecutadas: 74, correctas: 74, fallidas: 0
++RESULTADO: SUITE VERDE
+diff --git a/src/main/java/edu/uees/tutorias/app/Main.java b/src/main/java/edu/uees/tutorias/app/Main.java
+index c05f841..c076a89 100644
+--- a/src/main/java/edu/uees/tutorias/app/Main.java
++++ b/src/main/java/edu/uees/tutorias/app/Main.java
+@@ -5,6 +5,7 @@ import edu.uees.tutorias.domain.Docente;
+ import edu.uees.tutorias.domain.Estudiante;
+ import edu.uees.tutorias.domain.Horario;
+ import edu.uees.tutorias.domain.Reserva;
++import edu.uees.tutorias.domain.SolicitudTutoria;
+ import edu.uees.tutorias.notification.observer.NotificadorObservador;
+ import edu.uees.tutorias.notification.observer.ObservadorReserva;
+ import edu.uees.tutorias.notification.observer.RegistroAuditoriaObservador;
+@@ -50,7 +51,8 @@ public class Main {
+                 observadores
+         );
+ 
+-        Reserva reserva = servicio.solicitarReserva(estudiante, docente, horarioLunes);
++        Reserva reserva = servicio.solicitarReserva(
++                new SolicitudTutoria(estudiante, docente, horarioLunes));
+         System.out.println("Estado inicial: " + reserva.getEstado());
+ 
+         servicio.confirmarReserva(reserva.getId());
+@@ -66,8 +68,8 @@ public class Main {
+         // Cancelacion de ultima hora: la nueva reserva quedo para el 2026-09-01,
+         // asi que "ahora" (fecha de esta demo) esta a menos de 24h -> la
+         // PoliticaCancelacionConAntelacion debe marcarla como tardia.
+-        Reserva reservaTardia = servicio.solicitarReserva(estudiante, docente,
+-                new Horario(LocalDateTime.now().plusHours(2), LocalDateTime.now().plusHours(3)));
++        Reserva reservaTardia = servicio.solicitarReserva(new SolicitudTutoria(estudiante, docente,
++                new Horario(LocalDateTime.now().plusHours(2), LocalDateTime.now().plusHours(3))));
+         servicio.cancelarReserva(reservaTardia.getId(), "El estudiante ya no puede asistir");
+         System.out.println("Notas de la cancelacion tardia: " + reservaTardia.getNotas());
+ 
+diff --git a/src/main/java/edu/uees/tutorias/domain/Reserva.java b/src/main/java/edu/uees/tutorias/domain/Reserva.java
+index 5672405..3dd9cb5 100644
+--- a/src/main/java/edu/uees/tutorias/domain/Reserva.java
++++ b/src/main/java/edu/uees/tutorias/domain/Reserva.java
+@@ -23,15 +23,33 @@ public class Reserva {
+     private EstadoReserva estado;
+     private String notas;
+ 
+-    public Reserva(Estudiante estudiante, Docente docente, Horario horario) {
++    /**
++     * Crea una reserva a partir de la solicitud que la origina.
++     *
++     * <p>Refactorizacion 5 de Ae5 (agrupar Data Clump): este
++     * constructor recibia los tres datos por separado y los validaba uno
++     * a uno. Ahora la validacion del trio es responsabilidad de
++     * {@link SolicitudTutoria} y este constructor solo copia lo que ya
++     * es valido.</p>
++     */
++    public Reserva(SolicitudTutoria solicitud) {
++        Objects.requireNonNull(solicitud, "La solicitud es obligatoria");
+         this.id = UUID.randomUUID().toString();
+-        this.estudiante = Objects.requireNonNull(estudiante, "El estudiante es obligatorio");
+-        this.docente = Objects.requireNonNull(docente, "El docente es obligatorio");
+-        this.horario = Objects.requireNonNull(horario, "El horario es obligatorio");
++        this.estudiante = solicitud.estudiante();
++        this.docente = solicitud.docente();
++        this.horario = solicitud.horario();
+         this.estado = EstadoReserva.SOLICITADA;
+         this.notas = "";
+     }
+ 
++    /**
++     * Sobrecarga conservada por compatibilidad con el codigo de Ae1-Ae4:
++     * delega en el constructor basado en {@link SolicitudTutoria}.
++     */
++    public Reserva(Estudiante estudiante, Docente docente, Horario horario) {
++        this(new SolicitudTutoria(estudiante, docente, horario));
++    }
++
+     public void confirmar() {
+         if (estado != EstadoReserva.SOLICITADA) {
+             throw new IllegalStateException("Solo una reserva solicitada puede confirmarse");
+diff --git a/src/main/java/edu/uees/tutorias/domain/SolicitudTutoria.java b/src/main/java/edu/uees/tutorias/domain/SolicitudTutoria.java
+new file mode 100644
+index 0000000..b4b2dee
+--- /dev/null
++++ b/src/main/java/edu/uees/tutorias/domain/SolicitudTutoria.java
+@@ -0,0 +1,41 @@
++package edu.uees.tutorias.domain;
++
++import java.util.Objects;
++
++/**
++ * Los tres datos que definen una solicitud de tutoria: quien la pide,
++ * con quien y en que bloque de tiempo.
++ *
++ * <p>Problema de diseño que resuelve (Refactorizacion 5 de Ae5): el
++ * trio {@code (estudiante, docente, horario)} viajaba junto por todo el
++ * sistema -- el codigo cliente lo pasaba a
++ * {@code ServicioReservas.solicitarReserva(estudiante, docente, horario)},
++ * que lo pasaba tal cual a {@code new Reserva(estudiante, docente, horario)} --
++ * y cada firma repetia los mismos tres parametros en el mismo orden.
++ * Es un <em>Data Clump</em>: tres datos que nunca aparecen por separado
++ * y que, sin embargo, no tienen nombre como concepto. Sus consecuencias
++ * concretas eran que el orden de los tres argumentos se podia invertir
++ * sin que el compilador dijera nada (dos de ellos son Usuario), que la
++ * validacion de los tres estaba repetida en el constructor de Reserva, y
++ * que agregar un cuarto dato de la solicitud -- modalidad presencial o
++ * virtual, asignatura, motivo -- habria obligado a modificar todas las
++ * firmas de la cadena.</p>
++ *
++ * <p>Al agruparlos en un tipo con nombre propio, la solicitud se valida
++ * una sola vez, al crearse, y pasa a ser el vocabulario del caso de uso:
++ * los metodos reciben "una solicitud de tutoria" en lugar de tres
++ * objetos sueltos. Es inmutable, de ahi el {@code record}.</p>
++ *
++ * <p>Se conservan las firmas anteriores como sobrecargas que delegan en
++ * esta, para no romper a ningun cliente existente: el comportamiento
++ * observable, incluidos los mensajes de los tres requireNonNull, es el
++ * mismo.</p>
++ */
++public record SolicitudTutoria(Estudiante estudiante, Docente docente, Horario horario) {
++
++    public SolicitudTutoria {
++        Objects.requireNonNull(estudiante, "El estudiante es obligatorio");
++        Objects.requireNonNull(docente, "El docente es obligatorio");
++        Objects.requireNonNull(horario, "El horario es obligatorio");
++    }
++}
+diff --git a/src/main/java/edu/uees/tutorias/service/ServicioReservas.java b/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
+index fed41bc..6391042 100644
+--- a/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
++++ b/src/main/java/edu/uees/tutorias/service/ServicioReservas.java
+@@ -4,6 +4,7 @@ import edu.uees.tutorias.domain.Docente;
+ import edu.uees.tutorias.domain.Estudiante;
+ import edu.uees.tutorias.domain.Horario;
+ import edu.uees.tutorias.domain.Reserva;
++import edu.uees.tutorias.domain.SolicitudTutoria;
+ import edu.uees.tutorias.notification.observer.ObservadorReserva;
+ import edu.uees.tutorias.repository.RepositorioReservas;
+ import edu.uees.tutorias.service.cancelacion.PoliticaCancelacion;
+@@ -55,15 +56,31 @@ public class ServicioReservas {
+         observadores.add(Objects.requireNonNull(observador));
+     }
+ 
+-    public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
+-        horario.reservar();
+-        Reserva reserva = new Reserva(estudiante, docente, horario);
++    /**
++     * Registra una nueva reserva a partir de una solicitud de tutoria.
++     *
++     * <p>Refactorizacion 5 de Ae5 (agrupar Data Clump): la firma recibia
++     * los tres datos de la solicitud por separado y los reenviaba en el
++     * mismo orden al constructor de Reserva. Ahora recibe el concepto
++     * completo, {@link SolicitudTutoria}, que se valida a si mismo.</p>
++     */
++    public Reserva solicitarReserva(SolicitudTutoria solicitud) {
++        solicitud.horario().reservar();
++        Reserva reserva = new Reserva(solicitud);
+         repositorio.guardar(reserva);
+ 
+         publicar(reserva, "SOLICITADA");
+         return reserva;
+     }
+ 
++    /**
++     * Sobrecarga conservada por compatibilidad con el codigo de Ae1-Ae4:
++     * delega en la version basada en {@link SolicitudTutoria}.
++     */
++    public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
++        return solicitarReserva(new SolicitudTutoria(estudiante, docente, horario));
++    }
++
+     public void confirmarReserva(String reservaId) {
+         Reserva reserva = obtenerReserva(reservaId);
+         reserva.confirmar();
+diff --git a/src/test/java/edu/uees/tutorias/ServicioReservasCaracterizacionTest.java b/src/test/java/edu/uees/tutorias/ServicioReservasCaracterizacionTest.java
+index 80dfd82..56c9038 100644
+--- a/src/test/java/edu/uees/tutorias/ServicioReservasCaracterizacionTest.java
++++ b/src/test/java/edu/uees/tutorias/ServicioReservasCaracterizacionTest.java
+@@ -90,6 +90,15 @@ class ServicioReservasCaracterizacionTest {
+         assertEquals(List.of(reserva), repositorio.listarPorDocente("D1"));
+     }
+ 
++    @Test
++    void unaSolicitudIncompletaNoConsumeElHorario() {
++        assertThrows(NullPointerException.class,
++                () -> servicio.solicitarReserva(null, docente, horario));
++
++        assertTrue(horario.isDisponible());
++        assertEquals(List.of(), eventos);
++    }
++
+     @Test
+     void operarSobreUnaReservaInexistenteFallaConSuMensaje() {
+         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+diff --git a/src/test/java/edu/uees/tutorias/domain/SolicitudTutoriaTest.java b/src/test/java/edu/uees/tutorias/domain/SolicitudTutoriaTest.java
+new file mode 100644
+index 0000000..a897208
+--- /dev/null
++++ b/src/test/java/edu/uees/tutorias/domain/SolicitudTutoriaTest.java
+@@ -0,0 +1,70 @@
++package edu.uees.tutorias.domain;
++
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++
++import java.time.LocalDateTime;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++/**
++ * Pruebas del parameter object introducido en la Refactorizacion 5.
++ *
++ * <p>Verifican que el trio de datos se valide una sola vez, al crear la
++ * solicitud, con los mismos mensajes que antes emitia el constructor de
++ * {@link Reserva}, y que dos solicitudes con los mismos datos sean
++ * iguales por valor.</p>
++ */
++class SolicitudTutoriaTest {
++
++    private Estudiante estudiante;
++    private Docente docente;
++    private Horario horario;
++
++    @BeforeEach
++    void setUp() {
++        estudiante = new Estudiante("E1", "Luis Perez", "luis.perez@uees.edu.ec", "UEES-2023-001");
++        docente = new Docente("D1", "Ana Torres", "ana.torres@uees.edu.ec", "Estructuras de Datos");
++        horario = new Horario(LocalDateTime.of(2026, 8, 31, 10, 0), LocalDateTime.of(2026, 8, 31, 11, 0));
++    }
++
++    @Test
++    void unaSolicitudConservaSusTresDatos() {
++        SolicitudTutoria solicitud = new SolicitudTutoria(estudiante, docente, horario);
++
++        assertEquals(estudiante, solicitud.estudiante());
++        assertEquals(docente, solicitud.docente());
++        assertEquals(horario, solicitud.horario());
++    }
++
++    @Test
++    void ningunoDeLosTresDatosPuedeFaltarYElMensajeEsElDeSiempre() {
++        assertEquals("El estudiante es obligatorio",
++                assertThrows(NullPointerException.class,
++                        () -> new SolicitudTutoria(null, docente, horario)).getMessage());
++        assertEquals("El docente es obligatorio",
++                assertThrows(NullPointerException.class,
++                        () -> new SolicitudTutoria(estudiante, null, horario)).getMessage());
++        assertEquals("El horario es obligatorio",
++                assertThrows(NullPointerException.class,
++                        () -> new SolicitudTutoria(estudiante, docente, null)).getMessage());
++    }
++
++    @Test
++    void dosSolicitudesConLosMismosDatosSonIguales() {
++        assertTrue(new SolicitudTutoria(estudiante, docente, horario)
++                .equals(new SolicitudTutoria(estudiante, docente, horario)));
++    }
++
++    @Test
++    void unaReservaCreadaDesdeLaSolicitudTomaSusTresDatos() {
++        Reserva reserva = new Reserva(new SolicitudTutoria(estudiante, docente, horario));
++
++        assertEquals(estudiante, reserva.getEstudiante());
++        assertEquals(docente, reserva.getDocente());
++        assertEquals(horario, reserva.getHorario());
++        assertEquals(EstadoReserva.SOLICITADA, reserva.getEstado());
++    }
++}
+-- 
+2.43.0
+

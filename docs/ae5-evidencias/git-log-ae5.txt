@@ -1,0 +1,8 @@
+3f052d6 2026-09-21 22:12 refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos
+451cd1a 2026-09-21 22:10 refactor: agrupa el data clump estudiante/docente/horario en SolicitudTutoria
+41f14c7 2026-09-21 22:09 refactor: mueve la composicion de la nota de cancelacion a ResultadoCancelacion
+7902476 2026-09-21 22:08 refactor: mueve la regla de disponibilidad al dominio con guard clauses
+fcab73f 2026-09-21 22:07 refactor: extrae AgendaDocente de Docente (Extract Class)
+d25dffc 2026-09-21 22:06 refactor: introduce el Value Object Correo en lugar de un String validado
+82f82ff 2026-09-21 22:05 test: red de seguridad de caracterizacion para Ae5
+5b9e3b1 2026-09-21 22:02 chore: linea base Ae4 (punto de partida de Ae5)
