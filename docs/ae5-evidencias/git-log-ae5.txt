@@ -1,10 +1,25 @@
-3e01953 2026-09-21 22:15 docs: guia de commits de Ae5 y evidencias finales de ejecucion
-7e8e0be 2026-09-21 22:15 docs: documenta Ae5 en el README y agrega las evidencias de la entrega
-3f052d6 2026-09-21 22:12 refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos
-451cd1a 2026-09-21 22:10 refactor: agrupa el data clump estudiante/docente/horario en SolicitudTutoria
-41f14c7 2026-09-21 22:09 refactor: mueve la composicion de la nota de cancelacion a ResultadoCancelacion
-7902476 2026-09-21 22:08 refactor: mueve la regla de disponibilidad al dominio con guard clauses
-fcab73f 2026-09-21 22:07 refactor: extrae AgendaDocente de Docente (Extract Class)
-d25dffc 2026-09-21 22:06 refactor: introduce el Value Object Correo en lugar de un String validado
-82f82ff 2026-09-21 22:05 test: red de seguridad de caracterizacion para Ae5
-5b9e3b1 2026-09-21 22:02 chore: linea base Ae4 (punto de partida de Ae5)
+2a57be4 2026-09-21 23:28 ci: ejecuta mvn clean test en GitHub Actions como evidencia publica
+6e0f809 2026-09-21 22:19 docs: agrega el reporte tecnico de Ae5 (docx y pdf) al repositorio
+dbbe12f 2026-09-21 22:15 docs: actualiza el historial Git, los diffs y los parches de la entrega
+8862964 2026-09-21 22:15 docs: guia de commits de Ae5 y evidencias finales de ejecucion
+bf32a54 2026-09-21 22:15 docs: documenta Ae5 en el README y agrega las evidencias de la entrega
+c5590f3 2026-09-22 17:45 docs: agrega el reporte oficial de mvn clean test (BUILD SUCCESS, 80 pruebas)
+1e1a7dd 2026-09-21 22:12 refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos
+141df99 2026-09-21 22:10 refactor: agrupa el data clump estudiante/docente/horario en SolicitudTutoria
+c2765f7 2026-09-21 22:09 refactor: mueve la composicion de la nota de cancelacion a ResultadoCancelacion
+5b7f500 2026-09-21 22:08 refactor: mueve la regla de disponibilidad al dominio con guard clauses
+35284c0 2026-09-21 22:07 refactor: extrae AgendaDocente de Docente (Extract Class)
+cc163dd 2026-09-21 22:06 refactor: introduce el Value Object Correo en lugar de un String validado
+262125d 2026-09-21 22:05 test: red de seguridad de caracterizacion para Ae5
+66e6678 2026-09-15 19:22 Luis Saa UEES AE4
+fdca5b8 2026-09-09 00:08 LSAA
+4db5de3 2026-08-25 21:05 docs: completar documentacion inicial
+4a8add1 2026-08-25 21:04 docs: agregar diagrama UML de clases
+485337e 2026-08-25 21:04 test: agregar pruebas unitarias de ServicioReservas
+c90d29b 2026-08-25 21:04 feat: agregar clase de demostracion del flujo principal
+86f7b20 2026-08-25 21:04 feat: implementar ServicioReservas orquestando el caso de uso
+236954c 2026-08-25 21:03 refactor: separar servicio de notificaciones en su propia abstraccion
+dea4462 2026-08-25 21:03 feat: agregar repositorio de reservas (interfaz + implementacion en memoria)
+9eb5c92 2026-08-25 21:03 feat: implementar modelo de reservas y estados
+d25c2d3 2026-08-25 21:02 feat: crear clases iniciales del dominio (Usuario, Estudiante, Docente, Horario)
+74667ed 2026-08-25 21:02 chore: crear estructura inicial del proyecto Maven

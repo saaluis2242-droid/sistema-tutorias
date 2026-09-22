@@ -1,5 +1,47 @@
 
-=== 3e01953  2026-09-21 22:15
+=== 2a57be4  2026-09-21 23:28
+ci: ejecuta mvn clean test en GitHub Actions como evidencia publica
+
+Instala JDK 21 (Temurin), ejecuta la suite en cada push a main y publica
+el log completo y el reporte de Surefire como artefacto descargable. Da
+la verificacion oficial de las 80 pruebas de forma reproducible y sin
+depender de que la maquina del evaluador tenga Java y Maven instalados.
+
+
+ .github/workflows/pruebas.yml | 50 +++++++++++++++++++++++++++++++++++++++++++
+ README.md                     |  9 ++++++++
+ 2 files changed, 59 insertions(+)
+
+=== 6e0f809  2026-09-21 22:19
+docs: agrega el reporte tecnico de Ae5 (docx y pdf) al repositorio
+
+
+
+ README.md                     |   1 +
+ docs/ae5-reporte-tecnico.docx | Bin 0 -> 28483 bytes
+ docs/ae5-reporte-tecnico.pdf  | Bin 0 -> 229273 bytes
+ 3 files changed, 1 insertion(+)
+
+=== dbbe12f  2026-09-21 22:15
+docs: actualiza el historial Git, los diffs y los parches de la entrega
+
+
+
+ docs/ae5-evidencias/diff-resumen-ae4-vs-ae5.txt    |   17 +-
+ docs/ae5-evidencias/git-log-ae5-detallado.txt      |   64 +
+ docs/ae5-evidencias/git-log-ae5.txt                |    2 +
+ ...-de-seguridad-de-caracterizacion-para-Ae5.patch |    2 +-
+ ...troduce-el-Value-Object-Correo-en-lugar-d.patch |    2 +-
+ ...trae-AgendaDocente-de-Docente-Extract-Cla.patch |    2 +-
+ ...eve-la-regla-de-disponibilidad-al-dominio.patch |    2 +-
+ ...eve-la-composicion-de-la-nota-de-cancelac.patch |    2 +-
+ ...rupa-el-data-clump-estudiante-docente-hor.patch |    2 +-
+ ...trae-TarifarioTutoria-y-el-Value-Object-D.patch |    2 +-
+ ...nta-Ae5-en-el-README-y-agrega-las-evidenc.patch | 6542 ++++++++++++++++++++
+ ...e-commits-de-Ae5-y-evidencias-finales-de-.patch |  240 +
+ 12 files changed, 6856 insertions(+), 23 deletions(-)
+
+=== 8862964  2026-09-21 22:15
 docs: guia de commits de Ae5 y evidencias finales de ejecucion
 
 - GUIA_GIT.md: seccion 7.b con la secuencia exacta de commits del ciclo
@@ -15,7 +57,7 @@ docs: guia de commits de Ae5 y evidencias finales de ejecucion
  docs/ae5-evidencias/09-ejecucion-main.txt          |  17 ++++
  3 files changed, 194 insertions(+)
 
-=== 7e8e0be  2026-09-21 22:15
+=== bf32a54  2026-09-21 22:15
 docs: documenta Ae5 en el README y agrega las evidencias de la entrega
 
 - Seccion completa de Ae5: paso 0 (red de seguridad), ciclo aplicado,
@@ -63,7 +105,15 @@ docs: documenta Ae5 en el README y agrega las evidencias de la entrega
  ...trae-TarifarioTutoria-y-el-Value-Object-D.patch |  540 +++++++++
  31 files changed, 6072 insertions(+), 90 deletions(-)
 
-=== 3f052d6  2026-09-21 22:12
+=== c5590f3  2026-09-22 17:45
+docs: agrega el reporte oficial de mvn clean test (BUILD SUCCESS, 80 pruebas)
+
+
+
+ docs/ae5-evidencias/mvn-clean-test.txt | 68 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 68 insertions(+)
+
+=== 1e1a7dd  2026-09-21 22:12
 refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos
 
 Problema de diseño: GeneradorReciboReserva tenia dos razones de cambio.
@@ -108,7 +158,7 @@ Suite: 80 pruebas, 80 correctas.
  .../domain/tarifa/TarifarioTutoriaTest.java        |  93 +++++++++++++++++
  6 files changed, 385 insertions(+), 41 deletions(-)
 
-=== 451cd1a  2026-09-21 22:10
+=== 141df99  2026-09-21 22:10
 refactor: agrupa el data clump estudiante/docente/horario en SolicitudTutoria
 
 Problema de diseño: los tres datos que definen una solicitud viajaban
@@ -149,7 +199,7 @@ Suite: 74 pruebas, 74 correctas.
  .../uees/tutorias/domain/SolicitudTutoriaTest.java |  70 ++++++++++++++
  7 files changed, 271 insertions(+), 10 deletions(-)
 
-=== 41f14c7  2026-09-21 22:09
+=== c2765f7  2026-09-21 22:09
 refactor: mueve la composicion de la nota de cancelacion a ResultadoCancelacion
 
 Problema de diseño: ServicioReservas.cancelarReserva armaba la nota con
@@ -180,7 +230,7 @@ Suite: 69 pruebas, 69 correctas.
  .../cancelacion/ResultadoCancelacionTest.java      | 48 +++++++++++
  4 files changed, 173 insertions(+), 5 deletions(-)
 
-=== 7902476  2026-09-21 22:08
+=== 5b7f500  2026-09-21 22:08
 refactor: mueve la regla de disponibilidad al dominio con guard clauses
 
 Problema de diseño: ServicioReservas validaba reglas que pertenecen al
@@ -219,7 +269,7 @@ Suite: 66 pruebas, 66 correctas.
  .../java/edu/uees/tutorias/domain/ReservaTest.java | 27 +++++++
  6 files changed, 183 insertions(+), 8 deletions(-)
 
-=== fcab73f  2026-09-21 22:07
+=== 35284c0  2026-09-21 22:07
 refactor: extrae AgendaDocente de Docente (Extract Class)
 
 Problema de diseño: Docente tenia dos razones de cambio en la misma
@@ -253,7 +303,7 @@ Suite: 62 pruebas, 62 correctas.
  .../uees/tutorias/domain/AgendaDocenteTest.java    | 66 ++++++++++++++++
  4 files changed, 235 insertions(+), 14 deletions(-)
 
-=== d25dffc  2026-09-21 22:06
+=== cc163dd  2026-09-21 22:06
 refactor: introduce el Value Object Correo en lugar de un String validado
 
 Problema de diseño: Usuario guardaba el correo como String y validaba su
@@ -289,7 +339,7 @@ Suite: 58 pruebas, 58 correctas.
  .../java/edu/uees/tutorias/domain/CorreoTest.java  |  49 +++++++++
  10 files changed, 682 insertions(+), 10 deletions(-)
 
-=== 82f82ff  2026-09-21 22:05
+=== 262125d  2026-09-21 22:05
 test: red de seguridad de caracterizacion para Ae5
 
 Antes de tocar el diseño se amplia la suite para que cubra exactamente
@@ -329,57 +379,137 @@ Suite: 54 pruebas, 54 correctas. Ningun archivo de src/main modificado.
  tools/verificar.sh                                 |  14 ++
  15 files changed, 1083 insertions(+)
 
-=== 5b9e3b1  2026-09-21 22:02
-chore: linea base Ae4 (punto de partida de Ae5)
-
-Estado del proyecto al cerrar Ae4: dominio de tutorias con Strategy,
-Observer y Factory Method integrados, kata de refactorizacion sobre
-GeneradorReciboReserva y suite JUnit de ServicioReservas y de la
-fabrica de notificadores. Este commit fija la linea base sobre la que
-se aplican las refactorizaciones avanzadas de Ae5.
+=== 66e6678  2026-09-15 19:22
+Luis Saa UEES AE4
 
 
- .gitignore                                         |   9 +
- GUIA_GIT.md                                        | 215 +++++++++++++
- README.md                                          | 334 +++++++++++++++++++++
- docs/ae4-evidencias/git-log-stat.txt               |  15 +
+
+ GUIA_GIT.md                                        |  53 ++++++-
+ README.md                                          | 149 ++++++++++++++++---
+ docs/ae4-evidencias/git-log-stat.txt               |  15 ++
  docs/ae4-evidencias/git-log.txt                    |   7 +
- docs/ae4-evidencias/linea-base-antes.txt           |  56 ++++
- docs/ae4-evidencias/linea-despues.txt              |  56 ++++
- docs/modelo-clases.png                             | Bin 0 -> 158378 bytes
- docs/modelo-clases.svg                             |  56 ++++
+ docs/ae4-evidencias/linea-base-antes.txt           |  56 ++++++++
+ docs/ae4-evidencias/linea-despues.txt              |  56 ++++++++
+ .../tutorias/reporte/GeneradorReciboReserva.java   |  70 +++++++++
+ .../uees/tutorias/reporte/LineaBaseRecibos.java    | 159 +++++++++++++++++++++
+ 8 files changed, 544 insertions(+), 21 deletions(-)
+
+=== fdca5b8  2026-09-09 00:08
+LSAA
+
+
+
+ GUIA_GIT.md                                        |  54 ++++++-
+ README.md                                          | 171 +++++++++++++++------
  docs/uml-incremento1.png                           | Bin 0 -> 289545 bytes
- docs/uml-incremento1.svg                           |  92 ++++++
- pom.xml                                            |  43 +++
- src/main/java/edu/uees/tutorias/app/Main.java      |  77 +++++
- .../uees/tutorias/domain/CanalNotificacion.java    |  13 +
- .../java/edu/uees/tutorias/domain/Docente.java     |  50 +++
- .../edu/uees/tutorias/domain/EstadoReserva.java    |  12 +
- .../java/edu/uees/tutorias/domain/Estudiante.java  |  28 ++
- .../java/edu/uees/tutorias/domain/Horario.java     |  74 +++++
- .../java/edu/uees/tutorias/domain/Reserva.java     |  91 ++++++
- .../java/edu/uees/tutorias/domain/Usuario.java     |  91 ++++++
- .../uees/tutorias/notification/Notificador.java    |  17 ++
- .../notification/NotificadorEmailConsola.java      |  20 ++
- .../notification/NotificadorSmsConsola.java        |  16 +
+ docs/uml-incremento1.svg                           |  92 +++++++++++
+ src/main/java/edu/uees/tutorias/app/Main.java      |  38 ++++-
+ .../uees/tutorias/domain/CanalNotificacion.java    |  13 ++
+ .../java/edu/uees/tutorias/domain/Usuario.java     |  20 +++
  .../notification/NotificadorWhatsAppConsola.java   |  17 ++
- .../factory/EmailNotificadorCreator.java           |  13 +
- .../notification/factory/NotificadorCreator.java   |  37 +++
- .../factory/NotificadorCreatorFactory.java         |  36 +++
- .../factory/SmsNotificadorCreator.java             |  13 +
- .../factory/WhatsAppNotificadorCreator.java        |  19 ++
- .../observer/NotificadorObservador.java            |  48 +++
- .../notification/observer/ObservadorReserva.java   |  26 ++
- .../observer/RegistroAuditoriaObservador.java      |  33 ++
- .../tutorias/reporte/GeneradorReciboReserva.java   |  70 +++++
- .../tutorias/repository/RepositorioReservas.java   |  27 ++
- .../repository/RepositorioReservasEnMemoria.java   |  44 +++
- .../uees/tutorias/service/ServicioReservas.java    | 114 +++++++
- .../service/cancelacion/PoliticaCancelacion.java   |  28 ++
- .../PoliticaCancelacionConAntelacion.java          |  44 +++
- .../cancelacion/PoliticaCancelacionEstandar.java   |  18 ++
- .../service/cancelacion/ResultadoCancelacion.java  |  38 +++
- .../edu/uees/tutorias/ServicioReservasTest.java    | 147 +++++++++
- .../factory/NotificadorCreatorFactoryTest.java     |  29 ++
- .../uees/tutorias/reporte/LineaBaseRecibos.java    | 159 ++++++++++
- 43 files changed, 2332 insertions(+)
+ .../factory/EmailNotificadorCreator.java           |  13 ++
+ .../notification/factory/NotificadorCreator.java   |  37 +++++
+ .../factory/NotificadorCreatorFactory.java         |  36 +++++
+ .../factory/SmsNotificadorCreator.java             |  13 ++
+ .../factory/WhatsAppNotificadorCreator.java        |  19 +++
+ .../observer/NotificadorObservador.java            |  48 ++++++
+ .../notification/observer/ObservadorReserva.java   |  26 ++++
+ .../observer/RegistroAuditoriaObservador.java      |  33 ++++
+ .../uees/tutorias/service/ServicioReservas.java    |  81 +++++++---
+ .../service/cancelacion/PoliticaCancelacion.java   |  28 ++++
+ .../PoliticaCancelacionConAntelacion.java          |  44 ++++++
+ .../cancelacion/PoliticaCancelacionEstandar.java   |  18 +++
+ .../service/cancelacion/ResultadoCancelacion.java  |  38 +++++
+ .../edu/uees/tutorias/ServicioReservasTest.java    |  76 ++++++++-
+ .../factory/NotificadorCreatorFactoryTest.java     |  29 ++++
+ 23 files changed, 865 insertions(+), 79 deletions(-)
+
+=== 4db5de3  2026-08-25 21:05
+docs: completar documentacion inicial
+
+
+
+ GUIA_GIT.md | 112 ++++++++++++++++++++++++++++++++++++++++++++++++
+ README.md   | 140 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 252 insertions(+)
+
+=== 4a8add1  2026-08-25 21:04
+docs: agregar diagrama UML de clases
+
+
+
+ docs/modelo-clases.png | Bin 0 -> 158378 bytes
+ docs/modelo-clases.svg |  56 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 56 insertions(+)
+
+=== 485337e  2026-08-25 21:04
+test: agregar pruebas unitarias de ServicioReservas
+
+
+
+ .../edu/uees/tutorias/ServicioReservasTest.java    | 85 ++++++++++++++++++++++
+ 1 file changed, 85 insertions(+)
+
+=== c90d29b  2026-08-25 21:04
+feat: agregar clase de demostracion del flujo principal
+
+
+
+ src/main/java/edu/uees/tutorias/app/Main.java | 47 +++++++++++++++++++++++++++
+ 1 file changed, 47 insertions(+)
+
+=== 86f7b20  2026-08-25 21:04
+feat: implementar ServicioReservas orquestando el caso de uso
+
+
+
+ .../uees/tutorias/service/ServicioReservas.java    | 81 ++++++++++++++++++++++
+ 1 file changed, 81 insertions(+)
+
+=== 236954c  2026-08-25 21:03
+refactor: separar servicio de notificaciones en su propia abstraccion
+
+
+
+ .../edu/uees/tutorias/notification/Notificador.java  | 17 +++++++++++++++++
+ .../notification/NotificadorEmailConsola.java        | 20 ++++++++++++++++++++
+ .../tutorias/notification/NotificadorSmsConsola.java | 16 ++++++++++++++++
+ 3 files changed, 53 insertions(+)
+
+=== dea4462  2026-08-25 21:03
+feat: agregar repositorio de reservas (interfaz + implementacion en memoria)
+
+
+
+ .../tutorias/repository/RepositorioReservas.java   | 27 +++++++++++++
+ .../repository/RepositorioReservasEnMemoria.java   | 44 ++++++++++++++++++++++
+ 2 files changed, 71 insertions(+)
+
+=== 9eb5c92  2026-08-25 21:03
+feat: implementar modelo de reservas y estados
+
+
+
+ .../edu/uees/tutorias/domain/EstadoReserva.java    | 12 +++
+ .../java/edu/uees/tutorias/domain/Reserva.java     | 91 ++++++++++++++++++++++
+ 2 files changed, 103 insertions(+)
+
+=== d25c2d3  2026-08-25 21:02
+feat: crear clases iniciales del dominio (Usuario, Estudiante, Docente, Horario)
+
+
+
+ .../java/edu/uees/tutorias/domain/Docente.java     | 50 +++++++++++++++
+ .../java/edu/uees/tutorias/domain/Estudiante.java  | 28 ++++++++
+ .../java/edu/uees/tutorias/domain/Horario.java     | 74 ++++++++++++++++++++++
+ .../java/edu/uees/tutorias/domain/Usuario.java     | 71 +++++++++++++++++++++
+ 4 files changed, 223 insertions(+)
+
+=== 74667ed  2026-08-25 21:02
+chore: crear estructura inicial del proyecto Maven
+
+
+
+ .gitignore |  9 +++++++++
+ pom.xml    | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+)
