@@ -4,6 +4,7 @@ import edu.uees.tutorias.domain.Docente;
 import edu.uees.tutorias.domain.Estudiante;
 import edu.uees.tutorias.domain.Horario;
 import edu.uees.tutorias.domain.Reserva;
+import edu.uees.tutorias.domain.SolicitudTutoria;
 import edu.uees.tutorias.notification.observer.ObservadorReserva;
 import edu.uees.tutorias.repository.RepositorioReservas;
 import edu.uees.tutorias.service.cancelacion.PoliticaCancelacion;
@@ -55,13 +56,29 @@ public class ServicioReservas {
         observadores.add(Objects.requireNonNull(observador));
     }
 
-    public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
-        horario.reservar();
-        Reserva reserva = new Reserva(estudiante, docente, horario);
+    /**
+     * Registra una nueva reserva a partir de una solicitud de tutoria.
+     *
+     * <p>Refactorizacion 5 de Ae5 (agrupar Data Clump): la firma recibia
+     * los tres datos de la solicitud por separado y los reenviaba en el
+     * mismo orden al constructor de Reserva. Ahora recibe el concepto
+     * completo, {@link SolicitudTutoria}, que se valida a si mismo.</p>
+     */
+    public Reserva solicitarReserva(SolicitudTutoria solicitud) {
+        solicitud.horario().reservar();
+        Reserva reserva = new Reserva(solicitud);
         repositorio.guardar(reserva);
 
         publicar(reserva, "SOLICITADA");
         return reserva;
+    }
+
+    /**
+     * Sobrecarga conservada por compatibilidad con el codigo de Ae1-Ae4:
+     * delega en la version basada en {@link SolicitudTutoria}.
+     */
+    public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
+        return solicitarReserva(new SolicitudTutoria(estudiante, docente, horario));
     }
 
     public void confirmarReserva(String reservaId) {

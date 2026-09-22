@@ -23,13 +23,31 @@ public class Reserva {
     private EstadoReserva estado;
     private String notas;
 
-    public Reserva(Estudiante estudiante, Docente docente, Horario horario) {
+    /**
+     * Crea una reserva a partir de la solicitud que la origina.
+     *
+     * <p>Refactorizacion 5 de Ae5 (agrupar Data Clump): este
+     * constructor recibia los tres datos por separado y los validaba uno
+     * a uno. Ahora la validacion del trio es responsabilidad de
+     * {@link SolicitudTutoria} y este constructor solo copia lo que ya
+     * es valido.</p>
+     */
+    public Reserva(SolicitudTutoria solicitud) {
+        Objects.requireNonNull(solicitud, "La solicitud es obligatoria");
         this.id = UUID.randomUUID().toString();
-        this.estudiante = Objects.requireNonNull(estudiante, "El estudiante es obligatorio");
-        this.docente = Objects.requireNonNull(docente, "El docente es obligatorio");
-        this.horario = Objects.requireNonNull(horario, "El horario es obligatorio");
+        this.estudiante = solicitud.estudiante();
+        this.docente = solicitud.docente();
+        this.horario = solicitud.horario();
         this.estado = EstadoReserva.SOLICITADA;
         this.notas = "";
+    }
+
+    /**
+     * Sobrecarga conservada por compatibilidad con el codigo de Ae1-Ae4:
+     * delega en el constructor basado en {@link SolicitudTutoria}.
+     */
+    public Reserva(Estudiante estudiante, Docente docente, Horario horario) {
+        this(new SolicitudTutoria(estudiante, docente, horario));
     }
 
     public void confirmar() {

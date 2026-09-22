@@ -91,6 +91,15 @@ class ServicioReservasCaracterizacionTest {
     }
 
     @Test
+    void unaSolicitudIncompletaNoConsumeElHorario() {
+        assertThrows(NullPointerException.class,
+                () -> servicio.solicitarReserva(null, docente, horario));
+
+        assertTrue(horario.isDisponible());
+        assertEquals(List.of(), eventos);
+    }
+
+    @Test
     void operarSobreUnaReservaInexistenteFallaConSuMensaje() {
         IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> servicio.confirmarReserva("no-existe"));

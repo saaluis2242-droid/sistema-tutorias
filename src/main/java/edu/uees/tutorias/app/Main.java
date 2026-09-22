@@ -5,6 +5,7 @@ import edu.uees.tutorias.domain.Docente;
 import edu.uees.tutorias.domain.Estudiante;
 import edu.uees.tutorias.domain.Horario;
 import edu.uees.tutorias.domain.Reserva;
+import edu.uees.tutorias.domain.SolicitudTutoria;
 import edu.uees.tutorias.notification.observer.NotificadorObservador;
 import edu.uees.tutorias.notification.observer.ObservadorReserva;
 import edu.uees.tutorias.notification.observer.RegistroAuditoriaObservador;
@@ -50,7 +51,8 @@ public class Main {
                 observadores
         );
 
-        Reserva reserva = servicio.solicitarReserva(estudiante, docente, horarioLunes);
+        Reserva reserva = servicio.solicitarReserva(
+                new SolicitudTutoria(estudiante, docente, horarioLunes));
         System.out.println("Estado inicial: " + reserva.getEstado());
 
         servicio.confirmarReserva(reserva.getId());
@@ -66,8 +68,8 @@ public class Main {
         // Cancelacion de ultima hora: la nueva reserva quedo para el 2026-09-01,
         // asi que "ahora" (fecha de esta demo) esta a menos de 24h -> la
         // PoliticaCancelacionConAntelacion debe marcarla como tardia.
-        Reserva reservaTardia = servicio.solicitarReserva(estudiante, docente,
-                new Horario(LocalDateTime.now().plusHours(2), LocalDateTime.now().plusHours(3)));
+        Reserva reservaTardia = servicio.solicitarReserva(new SolicitudTutoria(estudiante, docente,
+                new Horario(LocalDateTime.now().plusHours(2), LocalDateTime.now().plusHours(3))));
         servicio.cancelarReserva(reservaTardia.getId(), "El estudiante ya no puede asistir");
         System.out.println("Notas de la cancelacion tardia: " + reservaTardia.getNotas());
 
