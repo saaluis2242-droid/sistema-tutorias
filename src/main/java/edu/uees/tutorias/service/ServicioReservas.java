@@ -79,11 +79,7 @@ public class ServicioReservas {
             throw new IllegalStateException(resultado.getObservacion());
         }
 
-        String notaFinal = resultado.getObservacion().isEmpty()
-                ? motivo
-                : motivo + " [" + resultado.getObservacion() + "]";
-
-        reserva.cancelar(notaFinal);
+        reserva.cancelar(resultado.componerNota(motivo));
         repositorio.guardar(reserva);
         publicar(reserva, "CANCELADA");
     }
