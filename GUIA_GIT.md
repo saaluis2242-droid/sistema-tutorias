@@ -199,6 +199,73 @@ Verifica el historial antes de subir:
 git log --oneline --decorate --graph
 ```
 
+## 7.b Commits de Ae5 (refactorizacion respaldada por pruebas)
+
+Ae5 sigue el ciclo obligatorio PRUEBA VERDE -> CAMBIO PEQUENO -> PRUEBA
+VERDE -> COMMIT -> SIGUIENTE CAMBIO. La suite completa se ejecuta antes
+y despues de cada cambio; si una prueba falla, se revisa el ultimo
+cambio y no se avanza al siguiente.
+
+```bash
+# 0) Confirmar el estado inicial (la suite de Ae4 debe estar verde)
+git status
+mvn clean test
+
+# 1) Red de seguridad ANTES de tocar el diseño (no cambia src/main)
+mvn clean test
+git add src/test tools/
+git commit -m "test: red de seguridad de caracterizacion para Ae5"
+
+# 2) Refactorizacion 1: Introduce Value Object (Correo)
+mvn clean test
+git add src/main/java/edu/uees/tutorias/domain/Correo.java \
+        src/main/java/edu/uees/tutorias/domain/Usuario.java \
+        src/test/java/edu/uees/tutorias/domain/CorreoTest.java
+git commit -m "refactor: introduce el Value Object Correo en lugar de un String validado"
+
+# 3) Refactorizacion 2: Extract Class (AgendaDocente)
+mvn clean test
+git add src/main/java/edu/uees/tutorias/domain/AgendaDocente.java \
+        src/main/java/edu/uees/tutorias/domain/Docente.java \
+        src/test/java/edu/uees/tutorias/domain/AgendaDocenteTest.java
+git commit -m "refactor: extrae AgendaDocente de Docente (Extract Class)"
+
+# 4) Refactorizacion 3: Move Method + Guard Clauses
+mvn clean test
+git add src/main/java/edu/uees/tutorias/domain/Horario.java \
+        src/main/java/edu/uees/tutorias/domain/Reserva.java \
+        src/main/java/edu/uees/tutorias/service/ServicioReservas.java src/test
+git commit -m "refactor: mueve la regla de disponibilidad al dominio con guard clauses"
+
+# 5) Refactorizacion 4: Decompose Conditional + Move Method
+mvn clean test
+git add src/main/java/edu/uees/tutorias/service/ src/test/java/edu/uees/tutorias/service/
+git commit -m "refactor: mueve la composicion de la nota de cancelacion a ResultadoCancelacion"
+
+# 6) Refactorizacion 5: agrupar Data Clump (SolicitudTutoria)
+mvn clean test
+git add src/main src/test
+git commit -m "refactor: agrupa el data clump estudiante/docente/horario en SolicitudTutoria"
+
+# 7) Refactorizacion 6: Extract Class + Value Object (TarifarioTutoria, Dinero)
+mvn clean test
+git add src/main src/test
+git commit -m "refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos"
+
+# 8) Documentacion y evidencias
+git add README.md GUIA_GIT.md docs/ae5-evidencias/
+git commit -m "docs: documenta Ae5 en el README y agrega las evidencias de la entrega"
+```
+
+Cada mensaje de commit de Ae5 incluye, en su cuerpo, el problema de
+diseño que resuelve, el cambio aplicado, las pruebas que lo protegen y
+el estado de la suite tras el cambio. Para revisar el historial con esos
+cuerpos completos:
+
+```bash
+git log --stat
+```
+
 ## 8. Antes de entregar
 
 - Abre la URL del repositorio en una ventana privada (sin sesión

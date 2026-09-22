@@ -1,0 +1,17 @@
+[WHATSAPP] Para: Ana Torres | Mensaje: Nueva solicitud de tutoria de Luis Perez para 2026-08-31T10:00 - 2026-08-31T11:00
+Estado inicial: SOLICITADA
+[EMAIL] Para: Luis Perez <luis.perez@uees.edu.ec> | Mensaje: Tu tutoria con Ana Torres fue confirmada
+Estado tras confirmar: CONFIRMADA
+[EMAIL] Para: Luis Perez <luis.perez@uees.edu.ec> | Mensaje: Tu tutoria fue reprogramada para 2026-09-01T10:00 - 2026-09-01T11:00
+[WHATSAPP] Para: Ana Torres | Mensaje: La tutoria con Luis Perez fue reprogramada para 2026-09-01T10:00 - 2026-09-01T11:00
+Estado tras reprogramar: REPROGRAMADA
+[WHATSAPP] Para: Ana Torres | Mensaje: Nueva solicitud de tutoria de Luis Perez para 2026-09-22T00:15:26.591276844 - 2026-09-22T01:15:26.591287082
+[WHATSAPP] Para: Ana Torres | Mensaje: La reserva de Luis Perez fue cancelada. Motivo: El estudiante ya no puede asistir [cancelacion tardia (a menos de 24h del horario): puede aplicar penalizacion]
+Notas de la cancelacion tardia: El estudiante ya no puede asistir [cancelacion tardia (a menos de 24h del horario): puede aplicar penalizacion]
+
+--- Historial de auditoria ---
+2026-09-21T22:15:26.587241389 | reserva=060bb897-8ed4-4d37-9a51-327ea3b1521d | evento=SOLICITADA | estudiante=Luis Perez | docente=Ana Torres
+2026-09-21T22:15:26.590715785 | reserva=060bb897-8ed4-4d37-9a51-327ea3b1521d | evento=CONFIRMADA | estudiante=Luis Perez | docente=Ana Torres
+2026-09-21T22:15:26.591200459 | reserva=060bb897-8ed4-4d37-9a51-327ea3b1521d | evento=REPROGRAMADA | estudiante=Luis Perez | docente=Ana Torres
+2026-09-21T22:15:26.591451610 | reserva=ca1404db-dca8-4b39-9268-df374c8304a7 | evento=SOLICITADA | estudiante=Luis Perez | docente=Ana Torres
+2026-09-21T22:15:26.594919453 | reserva=ca1404db-dca8-4b39-9268-df374c8304a7 | evento=CANCELADA | estudiante=Luis Perez | docente=Ana Torres

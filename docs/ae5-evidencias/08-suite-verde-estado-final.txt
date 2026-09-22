@@ -1,0 +1,110 @@
+=== ServicioReservasCaracterizacionTest ===
+  [OK]   cadaCambioDeEstadoPublicaSuEventoEnOrden
+  [OK]   laObservacionDeLaPoliticaSeAnexaAlMotivoEntreCorchetes
+  [OK]   laReservaSolicitadaQuedaPersistidaYSePuedeRecuperarPorId
+  [OK]   operarSobreUnaReservaInexistenteFallaConSuMensaje
+  [OK]   reprogramarHaciaUnHorarioOcupadoFallaConSuMensajeYNoAlteraLaReserva
+  [OK]   sinObservacionLaNotaEsExactamenteElMotivo
+  [OK]   solicitarUnHorarioOcupadoFallaConSuMensajeYSinPublicarEventos
+  [OK]   unaCancelacionRechazadaPorLaPoliticaNoCambiaElEstadoNiPublicaEvento
+  [OK]   unaSolicitudIncompletaNoConsumeElHorario
+
+=== ServicioReservasTest ===
+  [OK]   agregarObservadorEnTiempoDeEjecucionRecibeEventosPosteriores
+  [OK]   cancelarReservaConPoliticaEstandarLiberaElHorarioSinObservaciones
+  [OK]   cancelarReservaCuyoHorarioYaPasoEsRechazadaPorLaPolitica
+  [OK]   cancelarReservaTardiaQuedaMarcadaPorLaPoliticaConAntelacion
+  [OK]   confirmarReservaCambiaSuEstadoYPublicaEvento
+  [OK]   noSePuedeReservarUnHorarioYaOcupado
+  [OK]   reprogramarReservaCambiaElHorarioAsociadoYPublicaEvento
+  [OK]   solicitarReservaDejaElHorarioOcupadoYPublicaEvento
+
+=== AgendaDocenteTest ===
+  [OK]   laColeccionExpuestaNoSePuedeModificarDesdeAfuera
+  [OK]   publicaLosHorariosEnOrden
+  [OK]   rechazaUnHorarioSolapadoSinAgregarlo
+  [OK]   unaAgendaNuevaEstaVacia
+
+=== CorreoTest ===
+  [OK]   dosCorreosConElMismoValorSonIguales
+  [OK]   elCorreoSabeSeparaseEnUsuarioYDominio
+  [OK]   unCorreoNoPuedeExistirInvalido
+  [OK]   unCorreoValidoConservaSuTexto
+
+=== DocenteTest ===
+  [OK]   dosHorariosConsecutivosNoSeConsideranSolapados
+  [OK]   laAgendaExpuestaEsDeSoloLectura
+  [OK]   losHorariosSePublicanYSeConservanEnOrden
+  [OK]   unDocenteNuevoNoTieneHorariosPublicados
+  [OK]   unHorarioQueSeSolapaConOtroYaPublicadoEsRechazado
+
+=== HorarioTest ===
+  [OK]   dosHorariosConElMismoIntervaloSonIguales
+  [OK]   dosHorariosQueComparteMinutosSeSolapan
+  [OK]   elTextoDeUnHorarioEsElQueUsaElRecibo
+  [OK]   ocuparDosVecesElMismoHorarioEsUnError
+  [OK]   ocuparUnHorarioLoDejaNoDisponibleYLiberarloLoDevuelveADisponible
+  [OK]   reservarUnHorarioDisponibleLoOcupa
+  [OK]   reservarUnHorarioYaTomadoFallaConElMensajeQueEmitiaElServicio
+  [OK]   unHorarioCuyoFinNoEsPosteriorAlInicioEsRechazado
+  [OK]   unHorarioNaceDisponible
+
+=== ReservaTest ===
+  [OK]   cancelarLiberaElHorarioYGuardaElMotivo
+  [OK]   cancelarSinMotivoDejaLasNotasVacias
+  [OK]   reprogramarHaciaUnHorarioNuloFallaSinLiberarElHorarioActual
+  [OK]   reprogramarHaciaUnHorarioOcupadoFallaSinAlterarLaReserva
+  [OK]   reprogramarLiberaElHorarioAnteriorYOcupaElNuevo
+  [OK]   soloUnaReservaConfirmadaPuedeCompletarse
+  [OK]   soloUnaReservaSolicitadaPuedeConfirmarse
+  [OK]   unaReservaCompletadaNoPuedeCancelarse
+  [OK]   unaReservaExigeEstudianteDocenteYHorario
+  [OK]   unaReservaNaceSolicitadaConIdYSinNotas
+  [OK]   unaReservaYaCanceladaNoPuedeCancelarseNiReprogramarse
+
+=== SolicitudTutoriaTest ===
+  [OK]   dosSolicitudesConLosMismosDatosSonIguales
+  [OK]   ningunoDeLosTresDatosPuedeFaltarYElMensajeEsElDeSiempre
+  [OK]   unaReservaCreadaDesdeLaSolicitudTomaSusTresDatos
+  [OK]   unaSolicitudConservaSusTresDatos
+
+=== UsuarioTest ===
+  [OK]   cadaTipoDeUsuarioDescribeSuPropioRol
+  [OK]   dosUsuariosConElMismoIdSonElMismoUsuario
+  [OK]   elCanalPreferidoPorDefectoEsEmailYPuedeCambiarse
+  [OK]   elCodigoEstudiantilEsObligatorio
+  [OK]   elCorreoSeLeeDeVueltaComoElMismoTexto
+  [OK]   laEspecialidadDelDocenteEsObligatoria
+  [OK]   unCorreoNuloEsRechazado
+  [OK]   unCorreoSinArrobaEsRechazadoConElMismoMensajeDeSiempre
+  [OK]   unNombreEnBlancoEsRechazado
+
+=== TarifarioTutoriaTest ===
+  [OK]   elImporteSeImprimeConElFormatoDelRecibo
+  [OK]   unaReservaCanceladaNoPaga
+  [OK]   unaReservaCompletadaConCodigoInstitucionalPagaVeintePorCientoMenos
+  [OK]   unaReservaCompletadaSinCodigoInstitucionalPagaElPrecioBase
+  [OK]   unaReservaReprogramadaPagaDiezPorCientoMenos
+  [OK]   unaReservaSolicitadaOConfirmadaPagaElPrecioBase
+
+=== NotificadorCreatorFactoryTest ===
+  [OK]   devuelveElCreadorCorrectoParaCadaCanal
+[EMAIL] Para: Luis Perez <luis@uees.edu.ec> | Mensaje: mensaje de prueba
+  [OK]   elCreadorObtenidoPuedeNotificarSinConocerLaClaseConcreta
+
+=== GeneradorReciboReservaTest ===
+  [OK]   reciboDeUnaReservaCanceladaNoCobraYMuestraElMotivo
+  [OK]   reciboDeUnaReservaCompletadaConCodigoUeesAplicaDescuentoDeFidelidad
+  [OK]   reciboDeUnaReservaCompletadaSinCodigoUeesNoAplicaDescuento
+  [OK]   reciboDeUnaReservaConfirmadaCobraElPrecioBase
+  [OK]   reciboDeUnaReservaReprogramadaAplicaDiezPorCientoDeDescuento
+  [OK]   reciboDeUnaReservaSolicitadaCobraElPrecioBase
+
+=== ResultadoCancelacionTest ===
+  [OK]   unaCancelacionPermitidaSinObservacionDejaElMotivoIntacto
+  [OK]   unaCancelacionRechazadaLlevaElMotivoDelRechazoComoObservacion
+  [OK]   unaObservacionSeAnexaAlMotivoEntreCorchetes
+
+-----------------------------------------------
+Pruebas ejecutadas: 80, correctas: 80, fallidas: 0
+RESULTADO: SUITE VERDE
