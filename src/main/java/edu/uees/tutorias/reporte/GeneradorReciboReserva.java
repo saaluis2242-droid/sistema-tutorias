@@ -1,62 +1,54 @@
 package edu.uees.tutorias.reporte;
 
+import edu.uees.tutorias.domain.Dinero;
 import edu.uees.tutorias.domain.EstadoReserva;
 import edu.uees.tutorias.domain.Reserva;
+import edu.uees.tutorias.domain.tarifa.TarifarioTutoria;
 
 /**
- * Genera el texto del recibo de una tutoria.
+ * Compone el texto del recibo de una tutoria.
  *
- * Refactorizacion 4 (Simplify Conditional): {@code calcularPrecio} y
- * {@code construirLineaEstado} comparaban {@code reserva.getEstado().toString()}
- * contra literales de texto ("REPROGRAMADA", "CANCELADA", "COMPLETADA")
- * con if/else anidados en tres niveles. Eso duplicaba, con texto suelto,
- * una informacion que ya existe como tipo en el dominio: el enum
- * {@link EstadoReserva}. Se reemplazaron ambas cadenas de if/else por un
- * {@code switch} sobre el enum (sin comparar Strings) y se aplano el
- * anidamiento. El resultado de cada caso es exactamente el mismo que
- * antes.
+ * <p>Refactorizacion 6 de Ae5 (Extract Class + Value Object): esta clase
+ * cargaba con dos razones de cambio. Decidia cuanto se cobra -- las
+ * constantes PRECIO_BASE, DESCUENTO_REPROGRAMACION, DESCUENTO_FIDELIDAD,
+ * el prefijo del codigo institucional y el switch que los aplicaba -- y
+ * ademas decidia como se ve el recibo. Que el area academica cambie un
+ * descuento y que se agregue una linea al recibo son cambios sin
+ * relacion, y los dos llegaban a este archivo; peor aun, la regla de
+ * precio solo podia probarse leyendo el texto impreso.</p>
+ *
+ * <p>La regla de cobro se movio a
+ * {@link TarifarioTutoria} y el importe se representa con el Value
+ * Object {@link Dinero}, que sabe formatearse. Lo que queda aqui es
+ * solo presentacion: rotulos, orden de las lineas y saltos de linea. El
+ * texto producido es identico, caracter por caracter, al de Ae4.</p>
  */
 public class GeneradorReciboReserva {
 
-    private static final double PRECIO_BASE = 15.0;
-    private static final double DESCUENTO_REPROGRAMACION = 0.1;
-    private static final double DESCUENTO_FIDELIDAD = 0.2;
-    private static final String PREFIJO_CODIGO_FIDELIDAD = "UEES";
+    private final TarifarioTutoria tarifario;
+
+    public GeneradorReciboReserva() {
+        this(new TarifarioTutoria());
+    }
+
+    /** Permite inyectar otro tarifario (por ejemplo, uno de prueba o una tarifa promocional). */
+    public GeneradorReciboReserva(TarifarioTutoria tarifario) {
+        this.tarifario = tarifario;
+    }
 
     public String generar(Reserva reserva) {
-        EstadoReserva estado = reserva.getEstado();
-        double precio = calcularPrecio(reserva, estado);
+        Dinero total = tarifario.calcular(reserva);
 
-        String recibo = "";
-        recibo = recibo + construirEncabezado(reserva);
-        recibo = recibo + construirLineaEstado(reserva, estado);
-        recibo = recibo + "Total a pagar: $" + precio + "\n";
-        return recibo;
-    }
-
-    private double calcularPrecio(Reserva reserva, EstadoReserva estado) {
-        return switch (estado) {
-            case REPROGRAMADA -> PRECIO_BASE - (PRECIO_BASE * DESCUENTO_REPROGRAMACION);
-            case CANCELADA -> 0.0;
-            case COMPLETADA -> tieneCodigoFidelidad(reserva)
-                    ? PRECIO_BASE - (PRECIO_BASE * DESCUENTO_FIDELIDAD)
-                    : PRECIO_BASE;
-            case SOLICITADA, CONFIRMADA -> PRECIO_BASE;
-        };
-    }
-
-    private boolean tieneCodigoFidelidad(Reserva reserva) {
-        String codigo = reserva.getEstudiante().getCodigoEstudiantil();
-        return codigo != null && codigo.startsWith(PREFIJO_CODIGO_FIDELIDAD);
+        return construirEncabezado(reserva)
+                + construirLineaEstado(reserva, reserva.getEstado())
+                + "Total a pagar: " + total + "\n";
     }
 
     private String construirEncabezado(Reserva reserva) {
-        String encabezado = "";
-        encabezado = encabezado + "Recibo de tutoria\n";
-        encabezado = encabezado + "Estudiante: " + reserva.getEstudiante().getNombre() + "\n";
-        encabezado = encabezado + "Docente: " + reserva.getDocente().getNombre() + "\n";
-        encabezado = encabezado + "Horario: " + reserva.getHorario() + "\n";
-        return encabezado;
+        return "Recibo de tutoria\n"
+                + "Estudiante: " + reserva.getEstudiante().getNombre() + "\n"
+                + "Docente: " + reserva.getDocente().getNombre() + "\n"
+                + "Horario: " + reserva.getHorario() + "\n";
     }
 
     private String construirLineaEstado(Reserva reserva, EstadoReserva estado) {

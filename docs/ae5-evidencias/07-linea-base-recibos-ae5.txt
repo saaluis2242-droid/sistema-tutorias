@@ -1,0 +1,56 @@
+--- Caso 1 - SOLICITADA ---
+Recibo de tutoria
+Estudiante: Luis Perez
+Docente: Ana Torres
+Horario: 2026-08-31T10:00 - 2026-08-31T11:00
+Estado: SOLICITADA
+Total a pagar: $15.0
+OK   - Caso 1 - SOLICITADA
+
+--- Caso 2 - CONFIRMADA ---
+Recibo de tutoria
+Estudiante: Luis Perez
+Docente: Ana Torres
+Horario: 2026-08-31T10:00 - 2026-08-31T11:00
+Estado: CONFIRMADA
+Total a pagar: $15.0
+OK   - Caso 2 - CONFIRMADA
+
+--- Caso 3 - REPROGRAMADA ---
+Recibo de tutoria
+Estudiante: Luis Perez
+Docente: Ana Torres
+Horario: 2026-09-01T10:00 - 2026-09-01T11:00
+Estado: reprogramada (aplica 10% de descuento)
+Total a pagar: $13.5
+OK   - Caso 3 - REPROGRAMADA
+
+--- Caso 4 - CANCELADA ---
+Recibo de tutoria
+Estudiante: Luis Perez
+Docente: Ana Torres
+Horario: 2026-08-31T10:00 - 2026-08-31T11:00
+Estado: cancelada. Motivo: el estudiante ya no puede asistir
+Total a pagar: $0.0
+OK   - Caso 4 - CANCELADA
+
+--- Caso 5 - COMPLETADA con codigo UEES (descuento fidelidad) ---
+Recibo de tutoria
+Estudiante: Maria Lopez
+Docente: Ana Torres
+Horario: 2026-08-31T10:00 - 2026-08-31T11:00
+Estado: completada
+Total a pagar: $12.0
+OK   - Caso 5 - COMPLETADA con codigo UEES (descuento fidelidad)
+
+--- Caso 6 - COMPLETADA sin codigo UEES (sin descuento) ---
+Recibo de tutoria
+Estudiante: Pedro Ruiz
+Docente: Ana Torres
+Horario: 2026-08-31T10:00 - 2026-08-31T11:00
+Estado: completada
+Total a pagar: $15.0
+OK   - Caso 6 - COMPLETADA sin codigo UEES (sin descuento)
+
+
+6 OK, 0 FAIL
