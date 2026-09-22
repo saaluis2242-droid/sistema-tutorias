@@ -39,6 +39,31 @@ public class Horario {
         return disponible;
     }
 
+    /**
+     * Toma este horario para una reserva: comprueba que siga disponible
+     * y lo ocupa en una sola operacion.
+     *
+     * <p>Refactorizacion 3 de Ae5 (Move Method): esta comprobacion vivia
+     * en {@code ServicioReservas.solicitarReserva}, que preguntaba
+     * {@code isDisponible()} y, si la respuesta era afirmativa, llamaba a
+     * {@code marcarOcupado()}. Eso obligaba al servicio a conocer la
+     * regla del horario y dejaba la pregunta y la accion separadas, de
+     * modo que cualquier otro cliente podia olvidar la pregunta u operar
+     * sobre un estado ya cambiado. La regla pertenece al objeto que
+     * posee el dato, y aqui queda como una sola decision indivisible,
+     * escrita con guard clause: se valida primero y solo despues se
+     * muta el estado.</p>
+     *
+     * <p>El mensaje del error es exactamente el que emitia el servicio,
+     * para no alterar el comportamiento observable.</p>
+     */
+    public void reservar() {
+        if (!disponible) {
+            throw new IllegalStateException("El horario seleccionado ya no esta disponible");
+        }
+        this.disponible = false;
+    }
+
     /** Solo el propio Horario decide si puede marcarse como ocupado. */
     public void marcarOcupado() {
         if (!disponible) {

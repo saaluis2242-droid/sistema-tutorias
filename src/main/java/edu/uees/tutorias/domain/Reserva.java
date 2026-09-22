@@ -48,12 +48,30 @@ public class Reserva {
         this.notas = motivo == null ? "" : motivo;
     }
 
+    /**
+     * Reprograma la reserva a un nuevo horario disponible.
+     *
+     * <p>Refactorizacion 3 de Ae5 (Move Method + Guard Clauses): la
+     * comprobacion de que el nuevo horario estuviera disponible la hacia
+     * {@code ServicioReservas.reprogramarReserva} antes de llamar a este
+     * metodo. Era una regla del dominio viviendo en la capa de
+     * aplicacion: quien reprogramara una reserva por otra via podia
+     * omitirla. Ahora las tres condiciones se validan aqui, como guard
+     * clauses, y ninguna mutacion ocurre antes de que todas pasen; antes,
+     * un nuevo horario nulo liberaba el horario anterior y recien
+     * despues fallaba, dejando la reserva a medio camino.</p>
+     */
     public void reprogramar(Horario nuevoHorario) {
         if (estado == EstadoReserva.CANCELADA || estado == EstadoReserva.COMPLETADA) {
             throw new IllegalStateException("La reserva ya no puede reprogramarse en su estado actual");
         }
+        Objects.requireNonNull(nuevoHorario, "El nuevo horario es obligatorio");
+        if (!nuevoHorario.isDisponible()) {
+            throw new IllegalStateException("El nuevo horario no esta disponible");
+        }
+
         horario.liberar();
-        this.horario = Objects.requireNonNull(nuevoHorario, "El nuevo horario es obligatorio");
+        this.horario = nuevoHorario;
         nuevoHorario.marcarOcupado();
         this.estado = EstadoReserva.REPROGRAMADA;
     }

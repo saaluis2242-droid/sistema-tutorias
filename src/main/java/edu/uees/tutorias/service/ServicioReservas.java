@@ -56,10 +56,7 @@ public class ServicioReservas {
     }
 
     public Reserva solicitarReserva(Estudiante estudiante, Docente docente, Horario horario) {
-        if (!horario.isDisponible()) {
-            throw new IllegalStateException("El horario seleccionado ya no esta disponible");
-        }
-        horario.marcarOcupado();
+        horario.reservar();
         Reserva reserva = new Reserva(estudiante, docente, horario);
         repositorio.guardar(reserva);
 
@@ -93,9 +90,6 @@ public class ServicioReservas {
 
     public void reprogramarReserva(String reservaId, Horario nuevoHorario) {
         Reserva reserva = obtenerReserva(reservaId);
-        if (!nuevoHorario.isDisponible()) {
-            throw new IllegalStateException("El nuevo horario no esta disponible");
-        }
         reserva.reprogramar(nuevoHorario);
         repositorio.guardar(reserva);
         publicar(reserva, "REPROGRAMADA");

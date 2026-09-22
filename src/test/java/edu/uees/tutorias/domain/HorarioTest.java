@@ -58,6 +58,25 @@ class HorarioTest {
     }
 
     @Test
+    void reservarUnHorarioDisponibleLoOcupa() {
+        Horario horario = new Horario(INICIO, FIN);
+
+        horario.reservar();
+
+        assertFalse(horario.isDisponible());
+    }
+
+    @Test
+    void reservarUnHorarioYaTomadoFallaConElMensajeQueEmitiaElServicio() {
+        Horario horario = new Horario(INICIO, FIN);
+        horario.reservar();
+
+        IllegalStateException error = assertThrows(IllegalStateException.class, horario::reservar);
+
+        assertEquals("El horario seleccionado ya no esta disponible", error.getMessage());
+    }
+
+    @Test
     void dosHorariosQueComparteMinutosSeSolapan() {
         Horario diezAOnce = new Horario(INICIO, FIN);
         Horario diezYMediaADoce = new Horario(INICIO.plusMinutes(30), FIN.plusHours(1));

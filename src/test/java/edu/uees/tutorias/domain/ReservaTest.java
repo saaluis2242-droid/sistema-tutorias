@@ -111,6 +111,33 @@ class ReservaTest {
     }
 
     @Test
+    void reprogramarHaciaUnHorarioOcupadoFallaSinAlterarLaReserva() {
+        horario.marcarOcupado();
+        Reserva reserva = new Reserva(estudiante, docente, horario);
+        Horario ocupado = otroHorario();
+        ocupado.marcarOcupado();
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> reserva.reprogramar(ocupado));
+
+        assertEquals("El nuevo horario no esta disponible", error.getMessage());
+        assertEquals(EstadoReserva.SOLICITADA, reserva.getEstado());
+        assertEquals(horario, reserva.getHorario());
+        assertFalse(horario.isDisponible());
+    }
+
+    @Test
+    void reprogramarHaciaUnHorarioNuloFallaSinLiberarElHorarioActual() {
+        horario.marcarOcupado();
+        Reserva reserva = new Reserva(estudiante, docente, horario);
+
+        assertThrows(NullPointerException.class, () -> reserva.reprogramar(null));
+
+        assertFalse(horario.isDisponible());
+        assertEquals(EstadoReserva.SOLICITADA, reserva.getEstado());
+    }
+
+    @Test
     void soloUnaReservaConfirmadaPuedeCompletarse() {
         Reserva reserva = new Reserva(estudiante, docente, horario);
 
