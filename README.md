@@ -432,6 +432,15 @@ el Factory Method de notificadores.
 > `bash tools/verificar.sh` en un entorno con acceso normal a internet
 > para obtener el reporte oficial `BUILD SUCCESS`.
 
+## Integración continua
+
+Cada push a `main` dispara el flujo [`.github/workflows/pruebas.yml`](.github/workflows/pruebas.yml),
+que instala JDK 21 (Temurin) y ejecuta `mvn clean test` en GitHub. El resultado
+queda visible en la pestaña **Actions** del repositorio y el log completo, junto
+con el reporte de Surefire, se publica como artefacto descargable
+(`evidencia-mvn-clean-test`). Es la verificación oficial de la suite,
+reproducible por cualquiera sin instalar nada.
+
 ## Control de versiones
 
 El proyecto utiliza la rama `main`. El historial de commits documenta la

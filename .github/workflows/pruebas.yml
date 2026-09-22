@@ -1,0 +1,50 @@
+# Ejecuta la suite JUnit del proyecto en GitHub cada vez que se sube un cambio.
+#
+# Sirve como evidencia publica y reproducible del resultado de `mvn clean test`:
+# cada ejecucion queda registrada en la pestaña Actions del repositorio con su
+# log completo, y el reporte de Surefire se publica como artefacto descargable.
+name: Pruebas (mvn clean test)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pruebas:
+    name: Suite JUnit 5 sobre JDK 21
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Preparar JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ejecutar mvn clean test
+        run: mvn -B clean test | tee mvn-clean-test.txt
+
+      - name: Resumen del resultado
+        if: always()
+        run: |
+          echo '### Resultado de `mvn clean test`' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E "Tests run|BUILD" mvn-clean-test.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publicar el log y el reporte de Surefire
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencia-mvn-clean-test
+          path: |
+            mvn-clean-test.txt
+            target/surefire-reports/
+          if-no-files-found: warn
