@@ -10,20 +10,12 @@ import java.util.Objects;
  * Docente heredan de esta clase porque ambos SON usuarios y comparten
  * este mismo conjunto de atributos y reglas de validacion; no se trata
  * de una herencia usada solo para reutilizar codigo.
- *
- * <p>Refactorizacion 1 de Ae5 (introducir Value Object): el correo dejo
- * de ser un {@code String} validado por un metodo privado de esta clase
- * y paso a ser un {@link Correo}, que se valida a si mismo al
- * construirse. Usuario ya no tiene que conocer que hace valido a un
- * correo: solo pide uno. El comportamiento observable es el mismo (un
- * correo nulo o sin arroba sigue lanzando IllegalArgumentException con
- * el mismo mensaje, y el texto del correo se lee de vuelta igual).</p>
  */
 public abstract class Usuario {
 
     private final String id;
     private final String nombre;
-    private final Correo correo;
+    private final String correo;
     private CanalNotificacion canalPreferido;
 
     protected Usuario(String id, String nombre, String correo) {
@@ -33,7 +25,7 @@ public abstract class Usuario {
     protected Usuario(String id, String nombre, String correo, CanalNotificacion canalPreferido) {
         this.id = Objects.requireNonNull(id, "El id no puede ser nulo");
         this.nombre = validarNombre(nombre);
-        this.correo = new Correo(correo);
+        this.correo = validarCorreo(correo);
         this.canalPreferido = Objects.requireNonNull(canalPreferido, "El canal preferido no puede ser nulo");
     }
 
@@ -44,6 +36,13 @@ public abstract class Usuario {
         return nombre;
     }
 
+    private String validarCorreo(String correo) {
+        if (correo == null || !correo.contains("@")) {
+            throw new IllegalArgumentException("El correo del usuario no es valido");
+        }
+        return correo;
+    }
+
     public String getId() {
         return id;
     }
@@ -52,7 +51,7 @@ public abstract class Usuario {
         return nombre;
     }
 
-    public Correo getCorreo() {
+    public String getCorreo() {
         return correo;
     }
 
