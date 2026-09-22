@@ -1,3 +1,5 @@
+3e01953 2026-09-21 22:15 docs: guia de commits de Ae5 y evidencias finales de ejecucion
+7e8e0be 2026-09-21 22:15 docs: documenta Ae5 en el README y agrega las evidencias de la entrega
 3f052d6 2026-09-21 22:12 refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos
 451cd1a 2026-09-21 22:10 refactor: agrupa el data clump estudiante/docente/horario en SolicitudTutoria
 41f14c7 2026-09-21 22:09 refactor: mueve la composicion de la nota de cancelacion a ResultadoCancelacion

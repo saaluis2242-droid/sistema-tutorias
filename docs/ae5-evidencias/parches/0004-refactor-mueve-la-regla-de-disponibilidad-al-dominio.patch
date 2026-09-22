@@ -1,7 +1,7 @@
 From 79024767adbf4ae37c25954cd2013c1e7ea70f22 Mon Sep 17 00:00:00 2001
 From: Luis Saa <saaluis2242@gmail.com>
 Date: Mon, 21 Sep 2026 22:08:52 -0500
-Subject: [PATCH 4/7] refactor: mueve la regla de disponibilidad al dominio con
+Subject: [PATCH 4/9] refactor: mueve la regla de disponibilidad al dominio con
  guard clauses
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

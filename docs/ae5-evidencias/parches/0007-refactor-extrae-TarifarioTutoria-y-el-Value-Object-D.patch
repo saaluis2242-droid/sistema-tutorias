@@ -1,7 +1,7 @@
 From 3f052d6fd1322d448f0bc27b62748bd7283debb5 Mon Sep 17 00:00:00 2001
 From: Luis Saa <saaluis2242@gmail.com>
 Date: Mon, 21 Sep 2026 22:12:27 -0500
-Subject: [PATCH 7/7] refactor: extrae TarifarioTutoria y el Value Object
+Subject: [PATCH 7/9] refactor: extrae TarifarioTutoria y el Value Object
  Dinero del generador de recibos
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

@@ -1,7 +1,7 @@
 From 451cd1aa0edb607190f94d0f468f6380d37ac58e Mon Sep 17 00:00:00 2001
 From: Luis Saa <saaluis2242@gmail.com>
 Date: Mon, 21 Sep 2026 22:10:53 -0500
-Subject: [PATCH 6/7] refactor: agrupa el data clump estudiante/docente/horario
+Subject: [PATCH 6/9] refactor: agrupa el data clump estudiante/docente/horario
  en SolicitudTutoria
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

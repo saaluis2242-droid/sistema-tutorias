@@ -1,0 +1,240 @@
+From 3e0195322afe451c8cfd181d16d61c0dcceca5bf Mon Sep 17 00:00:00 2001
+From: Luis Saa <saaluis2242@gmail.com>
+Date: Mon, 21 Sep 2026 22:15:40 -0500
+Subject: [PATCH 9/9] docs: guia de commits de Ae5 y evidencias finales de
+ ejecucion
+
+- GUIA_GIT.md: seccion 7.b con la secuencia exacta de commits del ciclo
+  de Ae5 (suite verde antes y despues de cada cambio).
+- docs/ae5-evidencias/08: suite completa en el estado final (80/80).
+- docs/ae5-evidencias/09: ejecucion de Main sobre el codigo refactorizado,
+  mostrando el flujo completo con Strategy, Observer y Factory Method
+  funcionando igual que antes de refactorizar.
+---
+ GUIA_GIT.md                                   |  67 +++++++++++
+ .../08-suite-verde-estado-final.txt           | 110 ++++++++++++++++++
+ docs/ae5-evidencias/09-ejecucion-main.txt     |  17 +++
+ 3 files changed, 194 insertions(+)
+ create mode 100644 docs/ae5-evidencias/08-suite-verde-estado-final.txt
+ create mode 100644 docs/ae5-evidencias/09-ejecucion-main.txt
+
+diff --git a/GUIA_GIT.md b/GUIA_GIT.md
+index f349784..c3d2cf8 100644
+--- a/GUIA_GIT.md
++++ b/GUIA_GIT.md
+@@ -199,6 +199,73 @@ Verifica el historial antes de subir:
+ git log --oneline --decorate --graph
+ ```
+ 
++## 7.b Commits de Ae5 (refactorizacion respaldada por pruebas)
++
++Ae5 sigue el ciclo obligatorio PRUEBA VERDE -> CAMBIO PEQUENO -> PRUEBA
++VERDE -> COMMIT -> SIGUIENTE CAMBIO. La suite completa se ejecuta antes
++y despues de cada cambio; si una prueba falla, se revisa el ultimo
++cambio y no se avanza al siguiente.
++
++```bash
++# 0) Confirmar el estado inicial (la suite de Ae4 debe estar verde)
++git status
++mvn clean test
++
++# 1) Red de seguridad ANTES de tocar el diseño (no cambia src/main)
++mvn clean test
++git add src/test tools/
++git commit -m "test: red de seguridad de caracterizacion para Ae5"
++
++# 2) Refactorizacion 1: Introduce Value Object (Correo)
++mvn clean test
++git add src/main/java/edu/uees/tutorias/domain/Correo.java \
++        src/main/java/edu/uees/tutorias/domain/Usuario.java \
++        src/test/java/edu/uees/tutorias/domain/CorreoTest.java
++git commit -m "refactor: introduce el Value Object Correo en lugar de un String validado"
++
++# 3) Refactorizacion 2: Extract Class (AgendaDocente)
++mvn clean test
++git add src/main/java/edu/uees/tutorias/domain/AgendaDocente.java \
++        src/main/java/edu/uees/tutorias/domain/Docente.java \
++        src/test/java/edu/uees/tutorias/domain/AgendaDocenteTest.java
++git commit -m "refactor: extrae AgendaDocente de Docente (Extract Class)"
++
++# 4) Refactorizacion 3: Move Method + Guard Clauses
++mvn clean test
++git add src/main/java/edu/uees/tutorias/domain/Horario.java \
++        src/main/java/edu/uees/tutorias/domain/Reserva.java \
++        src/main/java/edu/uees/tutorias/service/ServicioReservas.java src/test
++git commit -m "refactor: mueve la regla de disponibilidad al dominio con guard clauses"
++
++# 5) Refactorizacion 4: Decompose Conditional + Move Method
++mvn clean test
++git add src/main/java/edu/uees/tutorias/service/ src/test/java/edu/uees/tutorias/service/
++git commit -m "refactor: mueve la composicion de la nota de cancelacion a ResultadoCancelacion"
++
++# 6) Refactorizacion 5: agrupar Data Clump (SolicitudTutoria)
++mvn clean test
++git add src/main src/test
++git commit -m "refactor: agrupa el data clump estudiante/docente/horario en SolicitudTutoria"
++
++# 7) Refactorizacion 6: Extract Class + Value Object (TarifarioTutoria, Dinero)
++mvn clean test
++git add src/main src/test
++git commit -m "refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos"
++
++# 8) Documentacion y evidencias
++git add README.md GUIA_GIT.md docs/ae5-evidencias/
++git commit -m "docs: documenta Ae5 en el README y agrega las evidencias de la entrega"
++```
++
++Cada mensaje de commit de Ae5 incluye, en su cuerpo, el problema de
++diseño que resuelve, el cambio aplicado, las pruebas que lo protegen y
++el estado de la suite tras el cambio. Para revisar el historial con esos
++cuerpos completos:
++
++```bash
++git log --stat
++```
++
+ ## 8. Antes de entregar
+ 
+ - Abre la URL del repositorio en una ventana privada (sin sesión
+diff --git a/docs/ae5-evidencias/08-suite-verde-estado-final.txt b/docs/ae5-evidencias/08-suite-verde-estado-final.txt
+new file mode 100644
+index 0000000..d899799
+--- /dev/null
++++ b/docs/ae5-evidencias/08-suite-verde-estado-final.txt
+@@ -0,0 +1,110 @@
++=== ServicioReservasCaracterizacionTest ===
++  [OK]   cadaCambioDeEstadoPublicaSuEventoEnOrden
++  [OK]   laObservacionDeLaPoliticaSeAnexaAlMotivoEntreCorchetes
++  [OK]   laReservaSolicitadaQuedaPersistidaYSePuedeRecuperarPorId
++  [OK]   operarSobreUnaReservaInexistenteFallaConSuMensaje
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaConSuMensajeYNoAlteraLaReserva
++  [OK]   sinObservacionLaNotaEsExactamenteElMotivo
++  [OK]   solicitarUnHorarioOcupadoFallaConSuMensajeYSinPublicarEventos
++  [OK]   unaCancelacionRechazadaPorLaPoliticaNoCambiaElEstadoNiPublicaEvento
++  [OK]   unaSolicitudIncompletaNoConsumeElHorario
++
++=== ServicioReservasTest ===
++  [OK]   agregarObservadorEnTiempoDeEjecucionRecibeEventosPosteriores
++  [OK]   cancelarReservaConPoliticaEstandarLiberaElHorarioSinObservaciones
++  [OK]   cancelarReservaCuyoHorarioYaPasoEsRechazadaPorLaPolitica
++  [OK]   cancelarReservaTardiaQuedaMarcadaPorLaPoliticaConAntelacion
++  [OK]   confirmarReservaCambiaSuEstadoYPublicaEvento
++  [OK]   noSePuedeReservarUnHorarioYaOcupado
++  [OK]   reprogramarReservaCambiaElHorarioAsociadoYPublicaEvento
++  [OK]   solicitarReservaDejaElHorarioOcupadoYPublicaEvento
++
++=== AgendaDocenteTest ===
++  [OK]   laColeccionExpuestaNoSePuedeModificarDesdeAfuera
++  [OK]   publicaLosHorariosEnOrden
++  [OK]   rechazaUnHorarioSolapadoSinAgregarlo
++  [OK]   unaAgendaNuevaEstaVacia
++
++=== CorreoTest ===
++  [OK]   dosCorreosConElMismoValorSonIguales
++  [OK]   elCorreoSabeSeparaseEnUsuarioYDominio
++  [OK]   unCorreoNoPuedeExistirInvalido
++  [OK]   unCorreoValidoConservaSuTexto
++
++=== DocenteTest ===
++  [OK]   dosHorariosConsecutivosNoSeConsideranSolapados
++  [OK]   laAgendaExpuestaEsDeSoloLectura
++  [OK]   losHorariosSePublicanYSeConservanEnOrden
++  [OK]   unDocenteNuevoNoTieneHorariosPublicados
++  [OK]   unHorarioQueSeSolapaConOtroYaPublicadoEsRechazado
++
++=== HorarioTest ===
++  [OK]   dosHorariosConElMismoIntervaloSonIguales
++  [OK]   dosHorariosQueComparteMinutosSeSolapan
++  [OK]   elTextoDeUnHorarioEsElQueUsaElRecibo
++  [OK]   ocuparDosVecesElMismoHorarioEsUnError
++  [OK]   ocuparUnHorarioLoDejaNoDisponibleYLiberarloLoDevuelveADisponible
++  [OK]   reservarUnHorarioDisponibleLoOcupa
++  [OK]   reservarUnHorarioYaTomadoFallaConElMensajeQueEmitiaElServicio
++  [OK]   unHorarioCuyoFinNoEsPosteriorAlInicioEsRechazado
++  [OK]   unHorarioNaceDisponible
++
++=== ReservaTest ===
++  [OK]   cancelarLiberaElHorarioYGuardaElMotivo
++  [OK]   cancelarSinMotivoDejaLasNotasVacias
++  [OK]   reprogramarHaciaUnHorarioNuloFallaSinLiberarElHorarioActual
++  [OK]   reprogramarHaciaUnHorarioOcupadoFallaSinAlterarLaReserva
++  [OK]   reprogramarLiberaElHorarioAnteriorYOcupaElNuevo
++  [OK]   soloUnaReservaConfirmadaPuedeCompletarse
++  [OK]   soloUnaReservaSolicitadaPuedeConfirmarse
++  [OK]   unaReservaCompletadaNoPuedeCancelarse
++  [OK]   unaReservaExigeEstudianteDocenteYHorario
++  [OK]   unaReservaNaceSolicitadaConIdYSinNotas
++  [OK]   unaReservaYaCanceladaNoPuedeCancelarseNiReprogramarse
++
++=== SolicitudTutoriaTest ===
++  [OK]   dosSolicitudesConLosMismosDatosSonIguales
++  [OK]   ningunoDeLosTresDatosPuedeFaltarYElMensajeEsElDeSiempre
++  [OK]   unaReservaCreadaDesdeLaSolicitudTomaSusTresDatos
++  [OK]   unaSolicitudConservaSusTresDatos
++
++=== UsuarioTest ===
++  [OK]   cadaTipoDeUsuarioDescribeSuPropioRol
++  [OK]   dosUsuariosConElMismoIdSonElMismoUsuario
++  [OK]   elCanalPreferidoPorDefectoEsEmailYPuedeCambiarse
++  [OK]   elCodigoEstudiantilEsObligatorio
++  [OK]   elCorreoSeLeeDeVueltaComoElMismoTexto
++  [OK]   laEspecialidadDelDocenteEsObligatoria
++  [OK]   unCorreoNuloEsRechazado
++  [OK]   unCorreoSinArrobaEsRechazadoConElMismoMensajeDeSiempre
++  [OK]   unNombreEnBlancoEsRechazado
++
++=== TarifarioTutoriaTest ===
++  [OK]   elImporteSeImprimeConElFormatoDelRecibo
++  [OK]   unaReservaCanceladaNoPaga
++  [OK]   unaReservaCompletadaConCodigoInstitucionalPagaVeintePorCientoMenos
++  [OK]   unaReservaCompletadaSinCodigoInstitucionalPagaElPrecioBase
++  [OK]   unaReservaReprogramadaPagaDiezPorCientoMenos
++  [OK]   unaReservaSolicitadaOConfirmadaPagaElPrecioBase
++
++=== NotificadorCreatorFactoryTest ===
++  [OK]   devuelveElCreadorCorrectoParaCadaCanal
++[EMAIL] Para: Luis Perez <luis@uees.edu.ec> | Mensaje: mensaje de prueba
++  [OK]   elCreadorObtenidoPuedeNotificarSinConocerLaClaseConcreta
++
++=== GeneradorReciboReservaTest ===
++  [OK]   reciboDeUnaReservaCanceladaNoCobraYMuestraElMotivo
++  [OK]   reciboDeUnaReservaCompletadaConCodigoUeesAplicaDescuentoDeFidelidad
++  [OK]   reciboDeUnaReservaCompletadaSinCodigoUeesNoAplicaDescuento
++  [OK]   reciboDeUnaReservaConfirmadaCobraElPrecioBase
++  [OK]   reciboDeUnaReservaReprogramadaAplicaDiezPorCientoDeDescuento
++  [OK]   reciboDeUnaReservaSolicitadaCobraElPrecioBase
++
++=== ResultadoCancelacionTest ===
++  [OK]   unaCancelacionPermitidaSinObservacionDejaElMotivoIntacto
++  [OK]   unaCancelacionRechazadaLlevaElMotivoDelRechazoComoObservacion
++  [OK]   unaObservacionSeAnexaAlMotivoEntreCorchetes
++
++-----------------------------------------------
++Pruebas ejecutadas: 80, correctas: 80, fallidas: 0
++RESULTADO: SUITE VERDE
+diff --git a/docs/ae5-evidencias/09-ejecucion-main.txt b/docs/ae5-evidencias/09-ejecucion-main.txt
+new file mode 100644
+index 0000000..f548bfc
+--- /dev/null
++++ b/docs/ae5-evidencias/09-ejecucion-main.txt
+@@ -0,0 +1,17 @@
++[WHATSAPP] Para: Ana Torres | Mensaje: Nueva solicitud de tutoria de Luis Perez para 2026-08-31T10:00 - 2026-08-31T11:00
++Estado inicial: SOLICITADA
++[EMAIL] Para: Luis Perez <luis.perez@uees.edu.ec> | Mensaje: Tu tutoria con Ana Torres fue confirmada
++Estado tras confirmar: CONFIRMADA
++[EMAIL] Para: Luis Perez <luis.perez@uees.edu.ec> | Mensaje: Tu tutoria fue reprogramada para 2026-09-01T10:00 - 2026-09-01T11:00
++[WHATSAPP] Para: Ana Torres | Mensaje: La tutoria con Luis Perez fue reprogramada para 2026-09-01T10:00 - 2026-09-01T11:00
++Estado tras reprogramar: REPROGRAMADA
++[WHATSAPP] Para: Ana Torres | Mensaje: Nueva solicitud de tutoria de Luis Perez para 2026-09-22T00:15:26.591276844 - 2026-09-22T01:15:26.591287082
++[WHATSAPP] Para: Ana Torres | Mensaje: La reserva de Luis Perez fue cancelada. Motivo: El estudiante ya no puede asistir [cancelacion tardia (a menos de 24h del horario): puede aplicar penalizacion]
++Notas de la cancelacion tardia: El estudiante ya no puede asistir [cancelacion tardia (a menos de 24h del horario): puede aplicar penalizacion]
++
++--- Historial de auditoria ---
++2026-09-21T22:15:26.587241389 | reserva=060bb897-8ed4-4d37-9a51-327ea3b1521d | evento=SOLICITADA | estudiante=Luis Perez | docente=Ana Torres
++2026-09-21T22:15:26.590715785 | reserva=060bb897-8ed4-4d37-9a51-327ea3b1521d | evento=CONFIRMADA | estudiante=Luis Perez | docente=Ana Torres
++2026-09-21T22:15:26.591200459 | reserva=060bb897-8ed4-4d37-9a51-327ea3b1521d | evento=REPROGRAMADA | estudiante=Luis Perez | docente=Ana Torres
++2026-09-21T22:15:26.591451610 | reserva=ca1404db-dca8-4b39-9268-df374c8304a7 | evento=SOLICITADA | estudiante=Luis Perez | docente=Ana Torres
++2026-09-21T22:15:26.594919453 | reserva=ca1404db-dca8-4b39-9268-df374c8304a7 | evento=CANCELADA | estudiante=Luis Perez | docente=Ana Torres
+-- 
+2.43.0
+

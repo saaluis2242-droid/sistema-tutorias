@@ -1,18 +1,3 @@
- .gitignore                                         |   1 +
- docs/ae5-evidencias/00-suite-verde-linea-base.txt  |  76 +++++++++
- .../01-suite-verde-value-object-correo.txt         |  82 ++++++++++
- .../02-suite-verde-extract-class-agenda.txt        |  88 ++++++++++
- .../03-suite-verde-move-method-guard-clauses.txt   |  92 +++++++++++
- .../04-suite-verde-decompose-conditional.txt       |  97 +++++++++++
- .../05-suite-verde-data-clump-solicitud.txt        | 104 ++++++++++++
- .../06-suite-verde-extract-class-tarifario.txt     | 112 +++++++++++++
- docs/ae5-evidencias/07-linea-base-recibos-ae5.txt  |  56 +++++++
- docs/ae5-evidencias/codigo-antes/Docente.java      |  50 ++++++
- .../codigo-antes/GeneradorReciboReserva.java       |  70 ++++++++
- docs/ae5-evidencias/codigo-antes/Horario.java      |  74 +++++++++
- docs/ae5-evidencias/codigo-antes/Reserva.java      |  91 +++++++++++
- .../codigo-antes/ServicioReservas.java             | 114 +++++++++++++
- docs/ae5-evidencias/codigo-antes/Usuario.java      |  91 +++++++++++
  src/main/java/edu/uees/tutorias/app/Main.java      |   8 +-
  .../edu/uees/tutorias/domain/AgendaDocente.java    |  62 +++++++
  src/main/java/edu/uees/tutorias/domain/Correo.java |  50 ++++++
@@ -44,4 +29,4 @@
  .../stubs/org/junit/jupiter/api/Test.java          |  20 +++
  tools/verificar-offline.sh                         |  31 ++++
  tools/verificar.sh                                 |  14 ++
- 46 files changed, 3011 insertions(+), 87 deletions(-)
+ 31 files changed, 1813 insertions(+), 87 deletions(-)

@@ -1,4 +1,68 @@
 
+=== 3e01953  2026-09-21 22:15
+docs: guia de commits de Ae5 y evidencias finales de ejecucion
+
+- GUIA_GIT.md: seccion 7.b con la secuencia exacta de commits del ciclo
+  de Ae5 (suite verde antes y despues de cada cambio).
+- docs/ae5-evidencias/08: suite completa en el estado final (80/80).
+- docs/ae5-evidencias/09: ejecucion de Main sobre el codigo refactorizado,
+  mostrando el flujo completo con Strategy, Observer y Factory Method
+  funcionando igual que antes de refactorizar.
+
+
+ GUIA_GIT.md                                        |  67 +++++++++++++
+ .../ae5-evidencias/08-suite-verde-estado-final.txt | 110 +++++++++++++++++++++
+ docs/ae5-evidencias/09-ejecucion-main.txt          |  17 ++++
+ 3 files changed, 194 insertions(+)
+
+=== 7e8e0be  2026-09-21 22:15
+docs: documenta Ae5 en el README y agrega las evidencias de la entrega
+
+- Seccion completa de Ae5: paso 0 (red de seguridad), ciclo aplicado,
+  tabla de las 6 refactorizaciones con problema, tecnica, prueba que la
+  protege y commit; evidencia de preservacion del comportamiento; tabla
+  comparativa antes/despues por dimension; y las decisiones deliberadas
+  con su costo.
+- Estructura del proyecto, objetivos, seccion de pruebas, control de
+  versiones, evidencias y declaracion de uso de IA actualizados.
+- docs/ae5-evidencias/: suite completa ejecutada sobre cada commit del
+  historial, salida del harness de Ae4 contra el codigo final, codigo
+  antes/despues, diffs, git log y los 7 commits como parches.
+
+
+ README.md                                          |  200 +++-
+ ...inea-base.txt => 01-red-de-seguridad-verde.txt} |    5 +-
+ ...> 02-refactorizacion-1-value-object-correo.txt} |    5 +-
+ ... 03-refactorizacion-2-extract-class-agenda.txt} |    5 +-
+ ...efactorizacion-3-move-method-guard-clauses.txt} |    5 +-
+ ...05-refactorizacion-4-decompose-conditional.txt} |    5 +-
+ ... 06-refactorizacion-5-data-clump-solicitud.txt} |    5 +-
+ docs/ae5-evidencias/07-linea-base-recibos-ae5.txt  |   56 -
+ ...-refactorizacion-6-extract-class-tarifario.txt} |    5 +-
+ .../codigo-despues/AgendaDocente.java              |   62 +
+ docs/ae5-evidencias/codigo-despues/Correo.java     |   50 +
+ docs/ae5-evidencias/codigo-despues/Dinero.java     |   36 +
+ docs/ae5-evidencias/codigo-despues/Docente.java    |   55 +
+ .../codigo-despues/GeneradorReciboReserva.java     |   62 +
+ docs/ae5-evidencias/codigo-despues/Horario.java    |   99 ++
+ docs/ae5-evidencias/codigo-despues/Reserva.java    |  127 ++
+ .../codigo-despues/ServicioReservas.java           |  121 ++
+ .../codigo-despues/SolicitudTutoria.java           |   41 +
+ .../codigo-despues/TarifarioTutoria.java           |   55 +
+ docs/ae5-evidencias/codigo-despues/Usuario.java    |   92 ++
+ docs/ae5-evidencias/diff-resumen-ae4-vs-ae5.txt    |   47 +
+ docs/ae5-evidencias/diff-src-main-ae4-vs-ae5.patch |  749 ++++++++++++
+ docs/ae5-evidencias/git-log-ae5-detallado.txt      |  321 +++++
+ docs/ae5-evidencias/git-log-ae5.txt                |    8 +
+ ...-de-seguridad-de-caracterizacion-para-Ae5.patch | 1236 ++++++++++++++++++++
+ ...troduce-el-Value-Object-Correo-en-lugar-d.patch |  836 +++++++++++++
+ ...trae-AgendaDocente-de-Docente-Extract-Cla.patch |  342 ++++++
+ ...eve-la-regla-de-disponibilidad-al-dominio.patch |  312 +++++
+ ...eve-la-composicion-de-la-nota-de-cancelac.patch |  253 ++++
+ ...rupa-el-data-clump-estudiante-docente-hor.patch |  427 +++++++
+ ...trae-TarifarioTutoria-y-el-Value-Object-D.patch |  540 +++++++++
+ 31 files changed, 6072 insertions(+), 90 deletions(-)
+
 === 3f052d6  2026-09-21 22:12
 refactor: extrae TarifarioTutoria y el Value Object Dinero del generador de recibos
 

@@ -1,7 +1,7 @@
 From fcab73f8f8b5d37e2b5d7ec6cd557d552c2bada2 Mon Sep 17 00:00:00 2001
 From: Luis Saa <saaluis2242@gmail.com>
 Date: Mon, 21 Sep 2026 22:07:38 -0500
-Subject: [PATCH 3/7] refactor: extrae AgendaDocente de Docente (Extract Class)
+Subject: [PATCH 3/9] refactor: extrae AgendaDocente de Docente (Extract Class)
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit

@@ -1,7 +1,7 @@
 From 41f14c7fa226aacf80f2944e40aa4c20037d6a9f Mon Sep 17 00:00:00 2001
 From: Luis Saa <saaluis2242@gmail.com>
 Date: Mon, 21 Sep 2026 22:09:31 -0500
-Subject: [PATCH 5/7] refactor: mueve la composicion de la nota de cancelacion
+Subject: [PATCH 5/9] refactor: mueve la composicion de la nota de cancelacion
  a ResultadoCancelacion
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

@@ -1,7 +1,7 @@
 From d25dffcead2ffc801304f4ef2c8128e7dc39cc72 Mon Sep 17 00:00:00 2001
 From: Luis Saa <saaluis2242@gmail.com>
 Date: Mon, 21 Sep 2026 22:06:28 -0500
-Subject: [PATCH 2/7] refactor: introduce el Value Object Correo en lugar de un
+Subject: [PATCH 2/9] refactor: introduce el Value Object Correo en lugar de un
  String validado
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
